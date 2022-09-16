@@ -10,24 +10,9 @@ import configDB
 
 """
 MySQL database compare data and tables with oracle
-oracle_compare_mysql.py v1.5 2022-09-15 Linux py 37
+oracle_compare_mysql.py v1.5.1 2022-09-16 Linux py 37
 精简代码
 """
-config = readConfig.ReadConfig()  # 实例化
-mysql_conn = configDB.MySQLPOOL.connection()
-mysql_cursor = mysql_conn.cursor()  # MySQL连接池
-mysql_database = config.get_mysql('database')
-mysql_dbchar = config.get_mysql('dbchar')
-# Oracle read config
-oracle_host = config.get_oracle('host')
-oracle_port = config.get_oracle('port')
-oracle_user = config.get_oracle('user')
-oracle_passwd = config.get_oracle('passwd')
-oracle_service_name = config.get_oracle('service_name')
-
-oracle_conn = cx_Oracle.connect(
-    oracle_user + '/' + oracle_passwd + '@' + oracle_host + ':' + oracle_port + '/' + oracle_service_name)
-oracle_cursor = oracle_conn.cursor()
 
 
 class Logger(object):
@@ -51,7 +36,7 @@ class Logger(object):
         pass
 
 
-def table_prepare():
+def table_prepare(mysql_cursor):
     mysql_cursor.execute("""drop table if exists data_compare""")
     mysql_cursor.execute("""create table data_compare
 (id int ,
@@ -66,7 +51,7 @@ compare_time TIMESTAMP default CURRENT_TIMESTAMP
 )""")
 
 
-def check_db_exist(source_name, target_name):
+def check_db_exist(source_name, target_name,oracle_cursor,mysql_cursor):
     src_result = 0
     trg_result = 0
     try:
@@ -80,14 +65,14 @@ def check_db_exist(source_name, target_name):
     return src_result, trg_result
 
 
-def data_compare_single(sourcedb, target_db):  # 手动输入源数据库、目标数据库名称，比对全表数据
+def data_compare_single(sourcedb, target_db,oracle_cursor,mysql_cursor):  # 手动输入源数据库、目标数据库名称，比对全表数据
     table_id = 0
     source_rows = 0
     target_rows = 0
     target_db_name = ''
     target_table_name = ''
     target_view_name = ''
-    src_out, trg_out = check_db_exist(sourcedb, target_db)
+    src_out, trg_out = check_db_exist(sourcedb, target_db,oracle_cursor,mysql_cursor)
     if src_out == 0:
         print(sourcedb, '在源数据库不存在\nEXIT!')
         sys.exit()
@@ -148,10 +133,10 @@ def data_compare_single(sourcedb, target_db):  # 手动输入源数据库、目�
                     'TABLE',
                     target_table_name.upper(),
                     target_rows, is_success.upper()))
-                mysql_conn.commit()
+                mysql_cursor.execute('commit')
             except Exception as e:
                 print(e, '数据比对结果保存在目标表失败')
-                mysql_conn.rollback()
+                mysql_cursor.execute('rollback')
         # 视图比较
         try:
             oracle_cursor.execute("""select view_name from user_views """)  # oracle所有视图名称
@@ -200,10 +185,10 @@ def data_compare_single(sourcedb, target_db):  # 手动输入源数据库、目�
                     'VIEW',
                     target_view_name.upper(),
                     0, is_success.upper()))
-                mysql_conn.commit()
+                mysql_cursor.execute('commit')
             except Exception as e:
                 print(e, '数据比对结果保存在目标表失败')
-                mysql_conn.rollback()
+                mysql_cursor.execute('rollback')
 
 
 def main():
@@ -233,9 +218,24 @@ def main():
             os.makedirs(log_path)
     else:
         print('can not create dir,please run on win or linux!\n')
+    config = readConfig.ReadConfig()  # 实例化
+    mysql_conn = configDB.MySQLPOOL.connection()
+    mysql_cursor = mysql_conn.cursor()  # MySQL连接池
+    mysql_database = config.get_mysql('database')
+    mysql_dbchar = config.get_mysql('dbchar')
+    # Oracle read config
+    oracle_host = config.get_oracle('host')
+    oracle_port = config.get_oracle('port')
+    oracle_user = config.get_oracle('user')
+    oracle_passwd = config.get_oracle('passwd')
+    oracle_service_name = config.get_oracle('service_name')
+
+    oracle_conn = cx_Oracle.connect(
+        oracle_user + '/' + oracle_passwd + '@' + oracle_host + ':' + oracle_port + '/' + oracle_service_name)
+    oracle_cursor = oracle_conn.cursor()
     sys.stdout = Logger(log_path + "\\compare.log", sys.stdout)
-    table_prepare()
-    data_compare_single(oracle_user, mysql_database)
+    table_prepare(mysql_cursor)
+    data_compare_single(oracle_user, mysql_database,oracle_cursor,mysql_cursor)
     print('表结果比较如下:')
     mysql_cursor.execute("""select * from DATA_COMPARE""")
     data_compare_out = mysql_cursor.fetchall()
