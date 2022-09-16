@@ -71,9 +71,13 @@
 `Linux`
 
 下载Linux Instant Client（11.2.0.4及以上都行)
+
 https://www.oracle.com/database/technologies/instant-client/linux-x86-64-downloads.html
 
+
 ![image](https://user-images.githubusercontent.com/35289289/190542155-1883896f-38af-4693-b72a-577f320cd62e.png)
+
+或者直接下载当前资源库文件[linux_oracle_client.7z](https://github.com/iverycd/oracle_to_mysql/blob/master/linux_oracle_client.7z)
 
 以上解压并设定环境变量
 ```bash
@@ -85,9 +89,12 @@ echo "export PATH=$ORACLE_HOME:$PATH"
 `Win`
 
 下载Windows Instant Client（11.2.0.4及以上都行)
+
 https://www.oracle.com/database/technologies/instant-client/winx64-64-downloads.html
 
 ![image](https://user-images.githubusercontent.com/35289289/190544173-9ba6264f-7df7-46cd-acc2-08b5605ac7bf.png)
+
+或者直接下载当前资源库文件[win_oracle_client.7z](https://github.com/iverycd/oracle_to_mysql/blob/master/win_oracle_client.7z)
 
 解压之后重命名目录名称为`oracle_client`并放到代码同路径，如下：
 
@@ -126,27 +133,49 @@ python oracle_mig_mysql.py
 
 ## 如何打包
 
-`Linux`
+先修改脚本内oracle_client路径以及Python环境路径
+
+`Linux`打包
+
+在代码根目录创建hooks目录并编写配置文件
+
+![image](https://user-images.githubusercontent.com/35289289/190604823-81b3f70e-94cb-48ef-89a5-f12271efa979.png)
+
+![image](https://user-images.githubusercontent.com/35289289/190604919-9ff404e8-4df0-480f-8346-6e6f226b5412.png)
+
+```bash
+mkdir hooks
+
+vi hooks/hook-prettytable.py
+内容如下：
+  
+from PyInstaller.utils.hooks import collect_data_files, copy_metadata
+datas = collect_data_files('prettytable') + copy_metadata('prettytable')
 
 运行打包脚本 `sh pack.sh`
+```
+ 
+
 
 
 `Win`
 
 运行bat脚本 `pack.bat`
 
-## 二进制可执行文件
+## 开箱即用的二进制可执行文件
+
+下载[release](https://github.com/iverycd/oracle_to_mysql/releases/tag/v1.9.15.2)
 
 解压之后即可运行此工具
 
-1、解压，例如将`oracle_mig_mysql_v1.8.19.zip`上传到/opt目录
+1、解压，例如将`oracle_mig_mysql.zip`上传到/opt目录
 
 2、在root用户下解压
 
 ```bash
 [root@localhost root]# cd /opt
 
-[root@localhost root]# unzip oracle_mig_mysql_v1.8.19.zip
+[root@localhost root]# unzip oracle_mig_mysql.zip
 ```
 
 3、运行环境变量脚本
