@@ -1,44 +1,44 @@
-# oracle_to_mysql
+# :fire:oracle_to_mysql:fire:
 
 ![commit](https://img.shields.io/github/last-commit/iverycd/oracle_to_mysql?style=flat-square)
 ![tag](https://img.shields.io/github/v/release/iverycd/oracle_to_mysql?display_name=tag)
 ![languages](https://img.shields.io/github/languages/top/iverycd/oracle_to_mysql)
 
-## 简介
+## :dizzy:简介
 
-功能特性
+:sparkling_heart:功能特性
 
-- 支持运行在Linux以及Windows环境，已测试通过Oracle 11.2.0.4及以上，MySQL 5.7及以上
+:sparkles:支持运行在Linux以及Windows环境，已测试通过Oracle 11.2.0.4及以上，MySQL 5.7及以上
 
-- 支持在线迁移Oracle到MySQL的表、视图、索引、触发器、外键、自增列、以及部分触发器，不支持存储过程以及函数的迁移
+:sparkles: 支持在线迁移Oracle到MySQL的表、视图、索引、触发器、外键、自增列、以及部分触发器，不支持存储过程以及函数的迁移
 
-- 自动分析源库Oracle字段的长度并适配到MySQL合适的长度，避免MySQL字段长度太长问题 “Row size too large 65535”
+:sparkles: 自动分析源库Oracle字段的长度并适配到MySQL合适的长度，避免MySQL字段长度太长问题 “Row size too large 65535”
 
-- 自动处理Oracle触发器+序列形式的自增列适配到MySQL原生自增列
+:sparkles: 自动处理Oracle触发器+序列形式的自增列适配到MySQL原生自增列
 
-- 转储Oracle的函数、存储过程到平面文件以便修改人工翻译适配到MySQL
+:sparkles: 转储Oracle的函数、存储过程到平面文件以便修改人工翻译适配到MySQL
 
-- 后台多进程数据迁移，数据迁移更快
+:sparkles: 后台多进程数据迁移，数据迁移更快
 
-- 支持迁移部分表结构以及数据功能
+:sparkles: 支持迁移部分表结构以及数据功能
 
-- 支持迁移Oracle与MySQL共同存在的列数据，即目标数据库的列字段是源数据库列字段的超集
+:sparkles: 支持迁移Oracle与MySQL共同存在的列数据，即目标数据库的列字段是源数据库列字段的超集
 
-- 记录迁移日志，转储表、视图等DDL对象创建失败的sql语句
+:sparkles: 记录迁移日志，转储表、视图等DDL对象创建失败的sql语句
 
-- 支持Oracle与MySQL表数量快速比对功能
+:sparkles: 支持Oracle与MySQL表数量快速比对功能
 
-- 可放到后台一键迁移Oracle到MySQL
+:sparkles: 可放到后台一键迁移Oracle到MySQL
 
 
-环境要求
+:star:环境要求
 
 - 在运行的客户端PC需要同时能连通源端Oracle数据库以及目标MySQL数据库
 
 - 支持Win 10、Centos 7
 
 
-运行概览
+:camera:运行概览
 
 `全库迁移`
 
@@ -65,7 +65,7 @@
 
 
 
-## Dev环境运行
+## :microscope:Dev环境运行
 1、oracle客户端环境准备
 
 `Linux`
@@ -131,13 +131,13 @@ python oracle_mig_mysql.py
 ```
 
 
-## 如何打包
+## :computer:如何打包
 
 先修改脚本内oracle_client路径以及Python环境路径
 
 `Linux`打包
 
-在代码根目录创建hooks目录并编写配置文件
+:warning:在代码根目录创建hooks目录并编写配置文件
 
 ![image](https://user-images.githubusercontent.com/35289289/190604823-81b3f70e-94cb-48ef-89a5-f12271efa979.png)
 
@@ -162,7 +162,7 @@ datas = collect_data_files('prettytable') + copy_metadata('prettytable')
 
 运行bat脚本 `pack.bat`
 
-## 开箱即用的二进制可执行文件
+## :gift:开箱即用的二进制可执行文件
 
 下载[release](https://github.com/iverycd/oracle_to_mysql/releases/tag/v1.9.15.2)
 
@@ -182,11 +182,11 @@ datas = collect_data_files('prettytable') + copy_metadata('prettytable')
 ```bash
 [root@localhost ]# sh /opt/oracle_to_mysql/env_ora.sh && source /root/.bash_profile
 
-注意：此步骤3命令只需执行一次即可
+:warning:注意：此步骤3命令只需执行一次即可
 ```
 
 
-### 全库迁移
+### :trident:全库迁移
 
 #### Linux环境
 
@@ -329,7 +329,7 @@ G:\oracle_mig_mysql>oracle_mig_mysql.exe
 `ddl_function_procedure.sql`  --> Oracle导出的存储过程以及函数的定义，此部分需要修改语法适配并重新在MySQL创建即可
 
 
-## 比对Oracle以及MySQL表数据量
+## :eyes:比对Oracle以及MySQL表数据量
 
 oracle_compare_mysql.py，可以在数据迁移完成后快速比对Oracle以及MySQL的表数据量，检查是否有数据缺失。
 
@@ -360,7 +360,7 @@ G:\oracle_mig_mysql>oracle_compare_mysql.exe
 
 
 
-## 迁移部分表以及数据
+## :bookmark:迁移部分表以及数据
 
 
 ### 仅迁移数据（不创建表结构以及表索引）
@@ -368,9 +368,9 @@ G:\oracle_mig_mysql>oracle_compare_mysql.exe
 以下以Linux环境示例，windows环境操作方式类似
 
 
-`备注：使用-d命令前，需要确保mysql数据库已经创建了该表的表结构`
+:warning:`备注：使用-d命令前，需要确保mysql数据库已经创建了该表的表结构`
 
-`需了解，使用-d命令，会先truncate（清空）目标表的数据再迁移数据`
+:warning:`需了解，使用-d命令，会先truncate（清空）目标表的数据再迁移数据`
 
 1、编辑`custom_table.txt`文件输入要迁移数据的表名称
 
@@ -455,3 +455,31 @@ START MIGRATING ROW DATA! 2021-12-23 18:17:03.715882
 
 ```
 
+## :memo:完整命令列表
+通过编辑`custom_table.txt` 文件以及配合命令参数可自定义哪些表需要迁移
+
+:diamond_shape_with_a_dot_inside:命令示例：
+
+:one:仅迁移自定义表的表结构以及数据包括索引等约束
+
+```python
+python oracle_mig_mysql.py -c
+```
+
+:two:仅迁移自定义表的表数据，不包括表结构以及索引等约束
+
+```python
+python oracle_mig_mysql.py -d
+```
+
+:three:仅迁移自定义表的元数据，即表结构（表定义、视图、索引、触发器自增列等约束），不迁移数据
+
+```python
+python oracle_mig_mysql.py -m
+```
+
+:four:静默模式,输入-q之后无需在命令行界面键入“y”进行迁移前确认，默认为一键:bangbang:全库迁移:bangbang:
+
+```python
+python oracle_mig_mysql.py -q 
+```
