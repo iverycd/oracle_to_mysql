@@ -1,10 +1,10 @@
 # :fire:oracle_to_mysql:fire:
 
 ![commit](https://img.shields.io/github/last-commit/iverycd/oracle_to_mysql?style=flat-square)
-![tag](https://img.shields.io/github/v/release/iverycd/oracle_to_mysql?display_name=tag)
+[![tag](https://img.shields.io/github/v/release/iverycd/oracle_to_mysql?display_name=tag)](https://github.com/iverycd/oracle_to_mysql/releases/tag/v1.9.15.2)
 ![languages](https://img.shields.io/github/languages/top/iverycd/oracle_to_mysql)
-![linux](https://img.shields.io/badge/Linux-support-success?logo=linux)
-![win](https://img.shields.io/badge/Windows-support-success?logo=windows)
+[![linux](https://img.shields.io/badge/Linux-support-success?logo=linux)](https://github.com/iverycd/oracle_to_mysql/releases/tag/v1.9.15.2)
+[![win](https://img.shields.io/badge/Windows-support-success?logo=windows)](https://github.com/iverycd/oracle_to_mysql/releases/tag/v1.9.15.2)
 ![mac](https://img.shields.io/badge/MacOS-support-success?logo=apple)
 ## :dizzy:简介
 
