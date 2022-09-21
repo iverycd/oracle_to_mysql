@@ -3,9 +3,9 @@
 ![commit](https://img.shields.io/github/last-commit/iverycd/oracle_to_mysql?style=flat-square)
 [![tag](https://img.shields.io/github/v/release/iverycd/oracle_to_mysql?display_name=tag)](https://github.com/iverycd/oracle_to_mysql/releases/tag/v1.9.21.1)
 ![languages](https://img.shields.io/github/languages/top/iverycd/oracle_to_mysql)
-[![linux](https://img.shields.io/badge/Linux-support-success?logo=linux)](https://github.com/iverycd/oracle_to_mysql/releases/tag/v1.9.21.1)
-[![win](https://img.shields.io/badge/Windows-support-success?logo=windows)](https://github.com/iverycd/oracle_to_mysql/releases/tag/v1.9.21.1)
-![mac](https://img.shields.io/badge/MacOS-support-success?logo=apple)
+[![linux](https://img.shields.io/badge/Linux-support-success?logo=linux)](https://github.com/iverycd/oracle_to_mysql/releases)
+[![win](https://img.shields.io/badge/Windows-support-success?logo=windows)](https://github.com/iverycd/oracle_to_mysql/releases)
+[![mac](https://img.shields.io/badge/MacOS-support-success?logo=apple)](https://github.com/iverycd/oracle_to_mysql/releases)
 ## :dizzy:简介
 
 :sparkling_heart:功能特性
@@ -88,6 +88,15 @@ echo "export LD_LIBRARY_PATH=$ORACLE_HOME:$LD_LIBRARY_PATH"
 echo "export PATH=$ORACLE_HOME:$PATH"
 ```
 
+`MAC`
+
+下载当前资源库文件[mac_oracle_client.7z](https://github.com/iverycd/oracle_to_mysql/blob/master/mac_oracle_client.7z)
+
+将以上目录放在程序相同目录
+
+![image](https://user-images.githubusercontent.com/35289289/191474184-4f81036b-5cbc-4a3b-a7dc-3cc257e1cb4b.png)
+
+
 `Win`
 
 下载Windows Instant Client（11.2.0.4及以上都行)
@@ -157,7 +166,15 @@ datas = collect_data_files('prettytable') + copy_metadata('prettytable')
 运行打包脚本 `sh pack.sh`
 ```
  
+`MacOS`打包
 
+在程序所在目录运行
+
+```python
+sh mac_pack.sh
+```
+
+![image](https://user-images.githubusercontent.com/35289289/191474469-f40084a3-7475-407a-8de4-8542db94c274.png)
 
 
 `Win`
@@ -166,7 +183,14 @@ datas = collect_data_files('prettytable') + copy_metadata('prettytable')
 
 ## :gift:开箱即用的二进制可执行文件
 
-下载[release](https://github.com/iverycd/oracle_to_mysql/releases/tag/v1.9.15.2)
+下载[release](https://github.com/iverycd/oracle_to_mysql/releases/)
+
+分别对应win、linux、Mac
+
+[![linux](https://img.shields.io/badge/Linux-support-success?logo=linux)](https://github.com/iverycd/oracle_to_mysql/releases)
+[![win](https://img.shields.io/badge/Windows-support-success?logo=windows)](https://github.com/iverycd/oracle_to_mysql/releases)
+[![mac](https://img.shields.io/badge/MacOS-support-success?logo=apple)](https://github.com/iverycd/oracle_to_mysql/releases)
+
 
 解压之后即可运行此工具
 
@@ -180,12 +204,7 @@ datas = collect_data_files('prettytable') + copy_metadata('prettytable')
 [root@localhost root]# unzip oracle_mig_mysql.zip
 ```
 
-3、运行环境变量脚本
-```bash
-[root@localhost ]# sh /opt/oracle_to_mysql/env_ora.sh && source /root/.bash_profile
 
-:warning:注意：此步骤3命令只需执行一次即可
-```
 
 
 ### :trident:全库迁移
@@ -198,7 +217,21 @@ datas = collect_data_files('prettytable') + copy_metadata('prettytable')
 [root@localhost opt]# cd /opt/oracle_to_mysql
 ```
 
-2、编辑配置文件 config.ini文件，修改源数据库以及目标数据库信息
+
+2、运行环境变量脚本
+
+```bash
+[root@localhost ]# sh env_ora.sh 
+
+```
+
+![image](https://user-images.githubusercontent.com/35289289/191475634-d6788075-bfd6-45af-87e3-0d779b5ddd51.png)
+
+
+:warning:注意：此步骤仅Linux环境需要，Windows以及MacOS无需执行
+
+
+3、编辑配置文件 config.ini文件，修改源数据库以及目标数据库信息
 
 ```bash
 
@@ -222,13 +255,13 @@ dbchar = utf8mb4
 ```
 
 
-3、执行全库迁移
+4、执行全库迁移
 
 `须知：如果是通过堡垒机或者是vpn连接的非图形化界面，强烈建议使用后台方式运行此工具，避免数据迁移中断`
 
 ```bash
 
-后台执行命令：
+后台执行命令(需要命令后面带-q)：
 
 [root@localhost ]# nohup ./oracle_mig_mysql -q &
 
@@ -271,6 +304,16 @@ dbchar = utf8mb4
 `insert_failed_table.log ` --> 表数据插入失败的对象名称，此部分需要重新对个别表重新迁移数据
 
 `ddl_function_procedure.sql`  --> Oracle导出的存储过程以及函数的定义，此部分需要修改语法适配并重新在MySQL创建即可
+
+
+
+#### MacOS环境(兼容M1系列CPU)
+
+终端内执行即可：
+
+![image](https://user-images.githubusercontent.com/35289289/191476818-e02419d7-b2c6-4522-b103-3dcfe49f209d.png)
+
+![image](https://user-images.githubusercontent.com/35289289/191477136-2d523962-2e2a-46d9-ab3f-93e2bb0bff86.png)
 
 
 #### Windows环境
