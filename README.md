@@ -1,10 +1,10 @@
 # :fire:oracle_to_mysql:fire:
 
 ![commit](https://img.shields.io/github/last-commit/iverycd/oracle_to_mysql?style=flat-square)
-[![tag](https://img.shields.io/github/v/release/iverycd/oracle_to_mysql?display_name=tag)](https://github.com/iverycd/oracle_to_mysql/releases/tag/v1.9.15.2)
+[![tag](https://img.shields.io/github/v/release/iverycd/oracle_to_mysql?display_name=tag)](https://github.com/iverycd/oracle_to_mysql/releases/tag/v1.9.21.1)
 ![languages](https://img.shields.io/github/languages/top/iverycd/oracle_to_mysql)
-[![linux](https://img.shields.io/badge/Linux-support-success?logo=linux)](https://github.com/iverycd/oracle_to_mysql/releases/tag/v1.9.15.2)
-[![win](https://img.shields.io/badge/Windows-support-success?logo=windows)](https://github.com/iverycd/oracle_to_mysql/releases/tag/v1.9.15.2)
+[![linux](https://img.shields.io/badge/Linux-support-success?logo=linux)](https://github.com/iverycd/oracle_to_mysql/releases/tag/v1.9.21.1)
+[![win](https://img.shields.io/badge/Windows-support-success?logo=windows)](https://github.com/iverycd/oracle_to_mysql/releases/tag/v1.9.21.1)
 ![mac](https://img.shields.io/badge/MacOS-support-success?logo=apple)
 ## :dizzy:简介
 
@@ -37,7 +37,7 @@
 
 - 在运行的客户端PC需要同时能连通源端Oracle数据库以及目标MySQL数据库
 
-- 支持Win 10、Centos 7
+- 支持Windows、Centos、MacOS
 
 
 :camera:运行概览

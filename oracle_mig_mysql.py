@@ -19,11 +19,11 @@ from db_info import get_info, run_info, tbl_columns, cte_tab, cte_idx, fk, cte_t
 """
 Oracle database migration to MySQL
 py37
-V1.9.15.2 2022-09-15
-精简代码，添加部分注释
+V1.9.21.1 2022-09-21
+优化mac输出日志路径，增加compare工具在Linux、MAC下oracle客户端路径识别
 """
-version = '1.9.15.2'
-release_date = ' 2022-09-15'
+version = '1.9.21.1'
+release_date = ' 2022-09-21'
 
 
 parser = argparse.ArgumentParser(prog='oracle_mig_mysql',
@@ -563,6 +563,7 @@ def main():
     date_clock = date_clock.replace(':', '_')
     date_show = date_today + '_' + date_clock
     if platform.system().upper() == 'WINDOWS':
+        exepath = os.path.dirname(os.path.realpath(sys.argv[0])) + '\\'
         # 设置Oracle客户端的环境变量
         oracle_home = os.path.dirname(os.path.realpath(sys.argv[0])) + '\\oracle_client'
         os.environ['oracle_home'] = oracle_home  # 设置环境变量，如果当前系统存在多个Oracle客户端，需要设置下此次运行的客户端路径
@@ -574,7 +575,10 @@ def main():
         log_path = "mig_log" + '\\' + date_show + '\\'
         if not os.path.isdir(log_path):
             os.makedirs(log_path)
-    elif platform.system().upper() == 'LINUX':
+    elif platform.system().upper() == 'LINUX' or platform.system().upper() == 'DARWIN':
+        exepath = os.path.dirname(os.path.abspath(__file__)) + '/'
+        oracle_home = os.path.dirname(os.path.realpath(sys.argv[0])) + '/oracle_client'
+        os.environ['ORACLE_HOME'] = oracle_home
         log_path = "mig_log" + '/' + date_show + '/'
         if not os.path.isdir(log_path):
             os.makedirs(log_path)
@@ -598,8 +602,8 @@ def main():
             for text in fr.readlines():
                 if text.split():
                     fd.write(text)
-    sys.stdout = Logger(log_path + "\\mig.log", sys.stdout)
-    get_info(run_method, mode, log_path)
+    sys.stdout = Logger(log_path + "mig.log", sys.stdout)
+    get_info(run_method, mode, log_path,version,release_date)
     # 创建目标表结构
     if str(args.data_only).upper() != 'TRUE':
         all_table_count, list_success_table, ddl_failed_table_result = cte_tab(log_path, is_custom_table)
@@ -627,12 +631,22 @@ def main():
                                                                                                  is_custom_table)
     func_proc(log_path)
     mig_end_time = datetime.datetime.now()
-    run_info(log_path, mig_start_time, mig_end_time, all_table_count, list_success_table, ddl_failed_table_result,
+    if platform.system().upper() == 'WINDOWS' or platform.system().upper() == 'LINUX':
+        run_info(exepath,log_path, mig_start_time, mig_end_time, all_table_count, list_success_table, ddl_failed_table_result,
              all_constraints_count, all_constraints_success_count, function_based_index_count,
              constraint_failed_count, all_fk_count, all_fk_success_count, foreignkey_failed_count,
              all_inc_col_success_count, all_inc_col_failed_count, normal_trigger_count, trigger_success_count,
              oracle_autocol_total, trigger_failed_count, all_view_count, all_view_success_count,
              all_view_failed_count, view_failed_result)
+    else:
+        run_path = os.getcwd()
+        run_path = os.path.abspath(run_path) + '/'
+        print(run_path, log_path)
+        print('*' * 50 + 'MIGRATE SUMMARY' + '*' * 50 + '\n\n\n')
+        print("Oracle MIGRATE TO MySQL FINISH\n" + "START TIME:" + str(mig_start_time) + '\n' + "FINISH TIME:" + str(
+            mig_end_time) + '\n' + "ELAPSED TIME: " + str(
+            (mig_end_time - mig_start_time).seconds) + "  seconds\n")
+        print('PLEASE CHECK FAILED TABLE DDL IN LOG DIR ' + run_path + log_path)
 
 
 if __name__ == '__main__':

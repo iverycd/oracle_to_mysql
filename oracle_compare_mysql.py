@@ -212,7 +212,9 @@ def main():
         log_path = "mig_log" + '\\' + date_show + '\\'
         if not os.path.isdir(log_path):
             os.makedirs(log_path)
-    elif platform.system().upper() == 'LINUX':
+    elif platform.system().upper() == 'LINUX' or platform.system().upper() == 'DARWIN':
+        oracle_home = os.path.dirname(os.path.realpath(sys.argv[0])) + '/oracle_client'
+        os.environ['ORACLE_HOME'] = oracle_home
         log_path = "mig_log" + '/' + date_show + '/'
         if not os.path.isdir(log_path):
             os.makedirs(log_path)
@@ -233,7 +235,7 @@ def main():
     oracle_conn = cx_Oracle.connect(
         oracle_user + '/' + oracle_passwd + '@' + oracle_host + ':' + oracle_port + '/' + oracle_service_name)
     oracle_cursor = oracle_conn.cursor()
-    sys.stdout = Logger(log_path + "\\compare.log", sys.stdout)
+    sys.stdout = Logger(log_path + "compare.log", sys.stdout)
     table_prepare(mysql_cursor)
     data_compare_single(oracle_user, mysql_database,oracle_cursor,mysql_cursor)
     print('表结果比较如下:')
