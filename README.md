@@ -1,4 +1,4 @@
-# :fire:oracle_to_mysql:fire:
+# oracle_to_mysql
 
 ![commit](https://img.shields.io/github/last-commit/iverycd/oracle_to_mysql?style=flat-square)
 [![tag](https://img.shields.io/github/v/release/iverycd/oracle_to_mysql?display_name=tag)](https://github.com/iverycd/oracle_to_mysql/releases/tag/v1.9.21.1)
