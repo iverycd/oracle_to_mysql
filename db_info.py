@@ -408,7 +408,7 @@ def tbl_columns(table_name, fix_mode='N'):
 
 
 # 打印连接信息
-def get_info(run_method, mode, log_path,version,release_date):
+def get_info(run_method, mode, log_path,version):
     oracle_cursor = configDB.OraclePool()  # Oracle连接池
     mysql_cursor = configDB.MySQLPOOL.connection().cursor()  # MySQL连接池
     oracle_info = oracle_cursor._OraclePool__pool._kwargs
@@ -418,8 +418,7 @@ def get_info(run_method, mode, log_path,version,release_date):
     k.align["Oracle Migrate MySQL Tool"] = "l"
     k.padding_width = 1  # 填充宽度
     k.add_row(["Support Database: MySQL 5.7 and Oracle 11g higher"])
-    k.add_row(["Tool Version: " + version])
-    k.add_row(["Release Date: " + release_date])
+    k.add_row(["Version: " + version])
     k.add_row(["Powered By: Epoint Infrastructure Research Center"])
     print(k.get_string(sortby="Oracle Migrate MySQL Tool", reversesort=False))
     print('\nSource Database information:')

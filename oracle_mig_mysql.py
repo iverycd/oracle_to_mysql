@@ -8,51 +8,33 @@ import os
 import platform
 import re
 import sys
-import textwrap
 import time
 import traceback
 import configDB
 import cx_Oracle
 import pymysql
 from db_info import get_info, run_info, tbl_columns, cte_tab, cte_idx, fk, cte_trg, cte_comt, c_vw, func_proc, cp_vw
+import readConfig
+import concurrent
+from concurrent.futures import ThreadPoolExecutor
 
 """
 Oracle database migration to MySQL
-py37
-V1.9.21.1 2022-09-21
-优化mac输出日志路径，增加compare工具在Linux、MAC下oracle客户端路径识别
+V1.9.26.3
+调整执行分页查询并行度最大到16
 """
-version = '1.9.21.1'
-release_date = ' 2022-09-21'
+version = '1.9.26.3'
 
-
-parser = argparse.ArgumentParser(prog='oracle_mig_mysql',
-                                 formatter_class=argparse.RawDescriptionHelpFormatter,
-                                 description=textwrap.dedent('''\
-
-EXAMPLE:
-    EG(1):RUN MIGRATION FETCH AND INSERT 10000 ROWS DATA INTO TABLE:\n ./oracle_to_mysql -b 10000\n
-    EG(2):RUN IMPORT CUSTOM TABLE MIGRATION TO MySQL INCLUDE METADATA AND DATA ROWS:\n ./oracle_to_mysql -c true\n
-    '''))
-parser.add_argument('--batch_size', '-b', help='FETCH AND INSERT ROW SIZE,DEFAULT 10000', type=int)
-parser.add_argument('--custom_table', '-c', help='MIG CUSTOM TABLES INTO MySQL,DEFAULT FALSE', action='store_true',
-                    default='false')  # 默认是全表迁移
-parser.add_argument('--data_only', '-d', help='MIG ONLY DATA ROW DO NOT CREATE TABLE', action='store_true',
-                    default='false')
+parser = argparse.ArgumentParser(prog='oracle_mig_mysql', formatter_class=argparse.RawDescriptionHelpFormatter)
+parser.add_argument('--custom_table', '-c', help='MIG CUSTOM TABLE', action='store_true', default='false')
+parser.add_argument('--data_only', '-d', help='MIG ONLY DATA ROW ', action='store_true', default='false')
 parser.add_argument('--metadata_only', '-m', help='MIG ONLY METADATA', action='store_true', default='false')
 parser.add_argument('--parallel_degree', '-p', help='parallel degree default 2', type=int)
-parser.add_argument('--split_page', '-s', help='split page default 10000', type=int)
-parser.add_argument('--quite_mode', '-q', help='quite mode mig', action='store_true',
-                    default='false')
-parser.add_argument('-v', '--version', action='version', version=version + release_date, help='Display version')
+parser.add_argument('--quite_mode', '-q', help='quite mode mig', action='store_true', default='false')
+parser.add_argument('-v', '--version', action='version', version=version, help='Display version')
 args, unparsed = parser.parse_known_args()  # 只解析正确的参数列表，无效参数会被忽略且不报错，args是解析正确参数，unparsed是不被解析的错误参数，win多进程需要此写法
 # args = parser.parse_args()
 
-#  分页的记录数，默认每次分页的记录为10000条,即每次获取的行数
-if args.split_page:
-    split_page_size = args.split_page
-else:
-    split_page_size = 10000
 
 # -c命令与-d命令不能同时使用的判断
 if str(args.custom_table).upper() == 'TRUE' and str(args.data_only).upper() == 'TRUE':
@@ -69,11 +51,12 @@ if str(args.data_only).upper() == 'TRUE' and str(args.metadata_only).upper() == 
     print('ERROR: -d AND -m OPTION CAN NOT BE USED TOGETHER!\nEXIT')
     sys.exit(0)
 
-# 判断命令行参数-b是否指定,即每次插入的行数
-if args.batch_size:
-    row_batch_size = args.batch_size
-else:
-    row_batch_size = 10000
+config = readConfig.ReadConfig()  # 实例化
+
+row_batch_size = int(config.get_mysql('row_batch_size'))
+split_page_size = int(config.get_oracle('split_page_size'))
+split_process = int(config.get_oracle('split_process'))
+
 
 # 记录执行日志
 class Logger(object):
@@ -96,10 +79,12 @@ class Logger(object):
         pass
 
 
-# clob、blob、nclob要在读取源表前加载outputtypehandler属性,即将Oracle大字段转为string类型
-# 处理Oracle的number类型浮点数据与Python decimal类型的转换
-# Python遇到超过3位小数的浮点类型，小数部分只能保留3位，其余会被截断，会造成数据不准确，需要用此handler做转换，可指定数据库连接或者游标对象
 def dataconvert(cursor, name, defaultType, size, precision, scale):
+    """
+    clob、blob、nclob要在读取源表前加载outputtypehandler属性,即将Oracle大字段转为string类型
+    处理Oracle的number类型浮点数据与Python decimal类型的转换
+    Python遇到超过3位小数的浮点类型，小数部分只能保留3位，其余会被截断，会造成数据不准确，需要用此handler做转换，可指定数据库连接或者游标对象
+    """
     if defaultType == cx_Oracle.DB_TYPE_CLOB:
         return cursor.var(cx_Oracle.DB_TYPE_LONG, arraysize=cursor.arraysize)
     if defaultType == cx_Oracle.DB_TYPE_BLOB:
@@ -110,7 +95,10 @@ def dataconvert(cursor, name, defaultType, size, precision, scale):
         return cursor.var(decimal.Decimal, arraysize=cursor.arraysize)
 
 
-def split_success_list(v_max_workers, list_success_table):  # 将创建表成功的list结果分为n个小list，无论指定多少进程，现在最大限制到4进程
+def split_success_list(v_max_workers, list_success_table):
+    """
+    将创建表成功的list结果分为n个小list，无论指定多少进程，现在最大限制到4进程
+    """
     new_list = []  # 用于存储1分为2的表，将原表分成2个list
     if v_max_workers > 4:  # 最大使用4进程分割list
         v_max_workers = 4
@@ -138,8 +126,10 @@ def list_of_groups(init_list, childern_list_len):
     return end_list
 
 
-# 指定-d选项生效，进行分页查询迁移，并且比对源库和目标库表结构，只迁移源库和目标库共同拥有的列字段，此方式会在迁移前truncate表
 def mig_part_tbl_columns(log_path):
+    """
+    指定-d选项生效，进行分页查询迁移，并且比对源库和目标库表结构，只迁移源库和目标库共同拥有的列字段，此方式会在迁移前truncate表
+    """
     mysql_con = configDB.MySQLPOOL.connection()
     mysql_cur = mysql_con.cursor()  # MySQL连接池
     mysql_cur.arraysize = row_batch_size
@@ -329,9 +319,53 @@ def page_set(pageNum, pageSize):
     return startnum, endnum
 
 
-def mig_table(task_id, table_list, log_path):  # 这里是子进程,会被主进程multi_process_mig_table调用
+def insert_child2_thread(sql_list, start_index, insert_sql, table_name, get_table_count, log_path):
+    mysql_host = configDB.mysql_host
+    mysql_port = configDB.mysql_port
+    mysql_user = configDB.mysql_user
+    mysql_passwd = configDB.mysql_passwd
+    mysql_database = configDB.mysql_database
+    mysql_dbchar = configDB.mysql_dbchar
+    ora_conn = configDB.ora_conn
+    ora_conn_ret = cx_Oracle.connect(ora_conn)
+    ora_cur = ora_conn_ret.cursor()
+    ora_cur.outputtypehandler = dataconvert
+    my_conn = pymysql.connect(host=mysql_host, user=mysql_user, password=mysql_passwd, database=mysql_database,
+                              charset=mysql_dbchar, port=mysql_port)  # 目标库
+    my_cur = my_conn.cursor()
+    for sp_sql in sql_list[start_index]:
+        # print('子线程->thread ', start_index, ' ',sp_sql)
+        try:
+            ora_cur.execute(sp_sql)  # 执行
+        except Exception:
+            print(traceback.format_exc() + '查询Oracle源表数据失败，请检查是否存在该表或者表名小写！\n\n')
+            continue  # 这里需要显式指定continue，否则某张表不存在就会跳出此函数
+        while True:
+            rows = list(ora_cur.fetchmany(10000))
+            if not rows:
+                break
+            try:
+                my_cur.executemany(insert_sql, rows)  # 批量插入获取的结果集，需要注意的是 rows 必须是 list [] 数据类型
+                my_conn.commit()
+                print(
+                    "{0} {1} thread: {2} source_table_count: {3} insert_count: {4}".format(str(datetime.datetime.now()),
+                                                                                           table_name, start_index,
+                                                                                           get_table_count,
+                                                                                           my_cur.rowcount))
+            except Exception as e:
+                sql_insert_error = '\n' + '/* ' + str(e.args) + ' */' + '\n'
+                print(sql_insert_error)
+                filename = log_path + 'insert_failed_table.log'
+                f = open(filename, 'a', encoding='utf-8')
+                f.write(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + '\n')
+                f.write(insert_sql + '\n\n\n')
+                f.write(str(rows[0]) + '\n\n')
+                f.write(sql_insert_error + '\n\n')
+                f.close()
+
+
+def split_child1_mp(task_id, table_list, log_path):  # 这里是子进程,会被主进程multi_process_mig_table调用，用于生成每个表分页查询拼接SQL
     err_count = 0
-    # MySQL read config
     mysql_host = configDB.mysql_host
     mysql_port = configDB.mysql_port
     mysql_user = configDB.mysql_user
@@ -346,17 +380,15 @@ def mig_table(task_id, table_list, log_path):  # 这里是子进程,会被主进
     cur_oracle_result_split.arraysize = row_batch_size  # Oracle数据库游标对象结果集返回的行数即每次获取多少行
     fetch_many_count = row_batch_size
     mysql_con_total = pymysql.connect(host=mysql_host, user=mysql_user, password=mysql_passwd, database=mysql_database,
-                                      charset=mysql_dbchar)
+                                      charset=mysql_dbchar, port=mysql_port)
     mysql_cursor_total = mysql_con_total.cursor()
     mysql_cursor_total.arraysize = row_batch_size
     for v_table_name in table_list:  # 获取每个进程表名的结果集
         table_name = v_table_name
         target_table = source_table = table_name
-        source_effectrow = 0
-        target_effectrow = 0
-        mysql_insert_count = 0
-        source_table_rows = 0
         col_name = ''
+        # 需要注意list_all_sql变量需要放到此行，如果在for之外会跟其他多进程一起存入多个表的拼接SQL
+        list_all_sql = []  # 把某个表每次分页查询拼接sql存入list，如果该表有100行，每页有10条记录，那么这个list长度就是10
         try:
             cur_oracle_result_split.execute("""select count(*) from \"%s\"""" % source_table)
             get_table_count = int(cur_oracle_result_split.fetchone()[0])
@@ -372,7 +404,6 @@ def mig_table(task_id, table_list, log_path):  # 这里是子进程,会被主进
                 col_name = cur_oracle_result_split.fetchone()[0]
             except Exception as e:
                 print(e, '获取列名失败')
-                source_effectrow = -1
                 err_count += 1
                 sql_insert_error = '\n' + '/* ' + str(e) + ' */' + '\n'
                 filename = log_path + 'insert_failed_table.log'
@@ -410,89 +441,39 @@ def mig_table(task_id, table_list, log_path):  # 这里是子进程,会被主进
             cur_start_page = page_index + 1  # page_index是从0开始，所以cur_start_page 从1开始
             startnum, endnum = page_set(cur_start_page, page_size)  # 获取分页的起始页码，还有每页的记录数
             # 下面显式把列名列举出来，而不是*，因为分页会多出一列rownum的序号
-            select_sql = '''SELECT {col_name} FROM
-                        (
-                        SELECT A.*, ROWNUM RN
-                        FROM (SELECT * FROM \"{table_name}\") A
-                        WHERE ROWNUM <= {endnum}
-                        )
-                        WHERE RN >= {startnum} '''
+            select_sql = '''SELECT {col_name} FROM (SELECT A.*, ROWNUM RN FROM (SELECT * FROM \"{table_name}\") A WHERE ROWNUM <= {endnum}) WHERE RN >= {startnum}'''
             # sql查询语句进行赋值
             select_sql = select_sql.format(col_name=col_name, table_name=source_table, startnum=startnum, endnum=endnum)
-            try:
-                cur_oracle_result_split.execute(select_sql)  # 执行
-            except Exception:
-                print(traceback.format_exc() + '查询Oracle源表数据失败，请检查是否存在该表或者表名小写！\n\n' + table_name)
-                continue  # 这里需要显式指定continue，否则某张表不存在就会跳出此函数
-            while True:
-                rows = list(
-                    cur_oracle_result_split.fetchmany(
-                        fetch_many_count))
-                if not rows:
-                    break  # 当前表游标获取不到数据之后中断循环，返回到mig_database，可以继续下个表
+            # 每次的分页查询拼接SQL存入到list
+            list_all_sql.append(select_sql)
+        # 分页的SQL拼接列表，进行分片之后计算出实际运行的线程数
+        compute_thread = int(total_page_num / split_process)
+        # 如果只有1页记录，就规避掉整除为0的情况
+        if compute_thread == 0:
+            compute_thread = 1
+        # 对上面某个表总的分页查询拼接SQL列表进行分片，尽量是把分页查询一分为二
+        split_sql = list_of_groups(list_all_sql, compute_thread)
+        # 每个线程处理对应的SQL分页的分片查询结果
+        # v_index是对应分页查询列表的分片线程号，比如线程号1处理表A的分页查询0到10行记录，线程号2处理11-20行记录，线程号3处理剩余的
+        with concurrent.futures.ThreadPoolExecutor(max_workers=16) as executor:
+            task = {executor.submit(insert_child2_thread, split_sql, v_index, insert_sql, table_name, get_table_count,
+                                    log_path): v_index for v_index in range(len(split_sql))}
+            for future in concurrent.futures.as_completed(task):
+                task_name = task[future]
                 try:
-                    mysql_cursor_total.executemany(insert_sql, rows)  # 批量插入获取的结果集，需要注意的是 rows 必须是 list [] 数据类型
-                    source_effectrow = source_effectrow + cur_oracle_result_split.rowcount  # 计数源表插入的行数
-                    target_effectrow = target_effectrow + mysql_cursor_total.rowcount  # 计数目标表插入的行数
-                    mysql_cursor_total.execute(
-                        """update my_mig_task_info set source_table_rows='%s',target_table_rows='%s' where table_name='%s'""" % (
-                            get_table_count, target_effectrow, table_name))
-                    mysql_con_total.commit()
-                    mysql_insert_count = mysql_insert_count + mysql_cursor_total.rowcount  # 每次插入的行数
-                except Exception as e:
-                    target_effectrow = -1
-                    mysql_cursor_total.execute(
-                        """update my_mig_task_info set source_table_rows='%s',target_table_rows='%s' where table_name='%s'""" % (
-                            get_table_count, target_effectrow, table_name))
-                    mysql_con_total.commit()
-                    err_count += 1
-                    print('\n' + '/*  ' + table_name + '  ' + str(e.args) + ' */' + '\n')
-                    sql_insert_error = '\n' + '/* ' + str(e.args) + ' */' + '\n'
-                    filename = log_path + 'insert_failed_table.log'
-                    f = open(filename, 'a', encoding='utf-8')
-                    f.write('\n-- ' + str(err_count) + ' ' + table_name + ' INSERT ERROR' + '\n')
-                    f.write(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + '\n\n')
-                    f.write(insert_sql + '\n\n\n')
-                    f.write(str(rows[0]) + '\n\n')
-                    f.write(sql_insert_error + '\n\n')
-                    f.close()
-                try:
-                    mysql_cursor_total.execute(
-                        """select table_name,thread,source_table_rows,target_table_rows from my_mig_task_info where run_status='running' 
-                        and table_name='%s' and thread='%s' """ % (table_name, task_id))
-                    for v_out in mysql_cursor_total.fetchall():
-                        table_name = v_out[0]
-                        thread = v_out[1]
-                        source_table_rows = v_out[2]
-                        target_table_rows = v_out[3]
-                        print(
-                            "{0} current migrating progress: {1} thread: {2} source_table_row: {3} target_table_rows: {4}".format(
-                                str(datetime.datetime.now()), table_name, thread, source_table_rows, target_table_rows))
+                    data = future.done()
                 except Exception as e:
                     print(e)
-        if source_effectrow == target_effectrow:
-            is_success = 'Y'
-        else:
-            is_success = 'N'
-        try:
-            mysql_cursor_total.execute("""update my_mig_task_info set run_status='end',
-                source_table_rows=%s,
-                target_table_rows=%s,
-                is_success='%s' where table_name='%s'""" % (
-                source_table_rows, target_effectrow, is_success, table_name))  # 占位符需要引号包围
-            mysql_con_total.commit()
-        except Exception as e:
-            print(e)
 
 
-def multi_process_mig_table(new_list, log_path):  # 这里是主进程,多进程时调用子进程mig_table并行迁移数据
+def parent_process(new_list, log_path):  # 这里是主进程,多进程时调用子进程mig_table并行迁移数据
     mysql_cursor = configDB.MySQLPOOL.connection().cursor()  # MySQL连接池
     mysql_cursor.arraysize = row_batch_size
     process_list = []
     print('START MIGRATING ROW DATA! ' + str(datetime.datetime.now()) + ' \n')
     begin_time = datetime.datetime.now()
     for p_id in range(len(new_list[0])):  # new_list被分割的小list个数
-        process = multiprocessing.Process(target=mig_table,
+        process = multiprocessing.Process(target=split_child1_mp,
                                           args=(
                                               p_id, new_list[0][p_id],
                                               log_path))  # p_id，任务序列，new_list[0][p_id])，小list的表
@@ -539,6 +520,7 @@ def main():
     mode = 0
     is_custom_table = 0
     log_path = ''
+    exepath = ''
     # 同时迁移表数据的并行度,可指定并行度，默认为2
     if args.parallel_degree:
         degree = args.parallel_degree
@@ -603,14 +585,14 @@ def main():
                 if text.split():
                     fd.write(text)
     sys.stdout = Logger(log_path + "mig.log", sys.stdout)
-    get_info(run_method, mode, log_path,version,release_date)
+    get_info(run_method, mode, log_path, version)
     # 创建目标表结构
     if str(args.data_only).upper() != 'TRUE':
         all_table_count, list_success_table, ddl_failed_table_result = cte_tab(log_path, is_custom_table)
         new_list = split_success_list(degree, list_success_table)
         # 多进程获取源表数据结果集插入到目标库
         if str(args.metadata_only).upper() != 'TRUE':
-            multi_process_mig_table(new_list, log_path)  # 默认是全库迁移，分页方式迁移数据，多进程时调用子进程mig_table_task_total
+            parent_process(new_list, log_path)  # 默认是全库迁移，分页方式迁移数据，多进程时调用子进程mig_table_task_total
         # 创建约束包括索引
         all_constraints_count, all_constraints_success_count, function_based_index_count, \
         constraint_failed_count = cte_idx(log_path, is_custom_table)
@@ -632,17 +614,17 @@ def main():
     func_proc(log_path)
     mig_end_time = datetime.datetime.now()
     if platform.system().upper() == 'WINDOWS' or platform.system().upper() == 'LINUX':
-        run_info(exepath,log_path, mig_start_time, mig_end_time, all_table_count, list_success_table, ddl_failed_table_result,
-             all_constraints_count, all_constraints_success_count, function_based_index_count,
-             constraint_failed_count, all_fk_count, all_fk_success_count, foreignkey_failed_count,
-             all_inc_col_success_count, all_inc_col_failed_count, normal_trigger_count, trigger_success_count,
-             oracle_autocol_total, trigger_failed_count, all_view_count, all_view_success_count,
-             all_view_failed_count, view_failed_result)
+        run_info(exepath, log_path, mig_start_time, mig_end_time, all_table_count, list_success_table,
+                 ddl_failed_table_result,
+                 all_constraints_count, all_constraints_success_count, function_based_index_count,
+                 constraint_failed_count, all_fk_count, all_fk_success_count, foreignkey_failed_count,
+                 all_inc_col_success_count, all_inc_col_failed_count, normal_trigger_count, trigger_success_count,
+                 oracle_autocol_total, trigger_failed_count, all_view_count, all_view_success_count,
+                 all_view_failed_count, view_failed_result)
     else:
         run_path = os.getcwd()
         run_path = os.path.abspath(run_path) + '/'
-        print(run_path, log_path)
-        print('*' * 50 + 'MIGRATE SUMMARY' + '*' * 50 + '\n\n\n')
+        print('*' * 50 + 'MIGRATE SUMMARY' + '*' * 50 + '\n\n')
         print("Oracle MIGRATE TO MySQL FINISH\n" + "START TIME:" + str(mig_start_time) + '\n' + "FINISH TIME:" + str(
             mig_end_time) + '\n' + "ELAPSED TIME: " + str(
             (mig_end_time - mig_start_time).seconds) + "  seconds\n")
