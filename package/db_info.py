@@ -1,15 +1,14 @@
 import csv
 import datetime
 import logging
-import os
-import platform
 import re
 import sys
 import time
 import traceback
-import sql_format
+
 import configDB
 import prettytable
+import sql_format
 
 
 # 获取Oracle的列字段类型以及字段长度以及映射数据类型到MySQL的规则
@@ -409,7 +408,7 @@ def tbl_columns(table_name, fix_mode='N'):
 
 
 # 打印连接信息
-def get_info(run_method, mode, log_path,version,release_date):
+def get_info(run_method, mode, log_path,version):
     oracle_cursor = configDB.OraclePool()  # Oracle连接池
     mysql_cursor = configDB.MySQLPOOL.connection().cursor()  # MySQL连接池
     oracle_info = oracle_cursor._OraclePool__pool._kwargs
@@ -419,8 +418,7 @@ def get_info(run_method, mode, log_path,version,release_date):
     k.align["Oracle Migrate MySQL Tool"] = "l"
     k.padding_width = 1  # 填充宽度
     k.add_row(["Support Database: MySQL 5.7 and Oracle 11g higher"])
-    k.add_row(["Tool Version: " + version])
-    k.add_row(["Release Date: " + release_date])
+    k.add_row(["Version: " + version])
     k.add_row(["Powered By: Epoint Infrastructure Research Center"])
     print(k.get_string(sortby="Oracle Migrate MySQL Tool", reversesort=False))
     print('\nSource Database information:')
@@ -505,7 +503,7 @@ def get_info(run_method, mode, log_path,version,release_date):
         is_success varchar(100),run_status varchar(10))""")
 
 
-def run_info(log_path, mig_start_time, mig_end_time, all_table_count, list_success_table, ddl_failed_table_result,
+def run_info(exepath,log_path, mig_start_time, mig_end_time, all_table_count, list_success_table, ddl_failed_table_result,
              all_constraints_count,
              all_constraints_success_count,
              function_based_index_count, constraint_failed_count, all_fk_count, all_fk_success_count,
@@ -513,11 +511,6 @@ def run_info(log_path, mig_start_time, mig_end_time, all_table_count, list_succe
              trigger_success_count, oracle_autocol_total,
              trigger_failed_count, all_view_count, all_view_success_count, all_view_failed_count,
              view_failed_result):
-    if platform.system().upper() == 'WINDOWS':
-        # exepath = os.path.dirname(os.path.abspath(__file__)) + '\\'
-        exepath = os.path.dirname(os.path.realpath(sys.argv[0])) + '\\'
-    else:
-        exepath = os.path.dirname(os.path.abspath(__file__)) + '/'
     # Oracle源表信息
     oracle_tab_count = all_table_count  # oracle要迁移的表总数
     oracle_view_count = all_view_count  # oracle要创建的视图总数

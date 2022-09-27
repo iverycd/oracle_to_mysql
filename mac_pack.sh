@@ -1,3 +1,9 @@
+rm -rf package/*.py
+cp db_info.py package
+cp configDB.py package
+cp readConfig.py package
+cp sql_format.py package
+
 pyinstaller -F --clean -p package oracle_mig_mysql.py
 pyinstaller -F --clean -p package oracle_compare_mysql.py
 rm -rf dist/oracle_to_mysql

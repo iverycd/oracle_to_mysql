@@ -20,10 +20,10 @@ from concurrent.futures import ThreadPoolExecutor
 
 """
 Oracle database migration to MySQL
-V1.9.26.3
-调整执行分页查询并行度最大到16
+V1.9.27.1
+优化每次插入到目标数据库的行数由row_batch_size控制
 """
-version = '1.9.26.3'
+version = '1.9.27.1'
 
 parser = argparse.ArgumentParser(prog='oracle_mig_mysql', formatter_class=argparse.RawDescriptionHelpFormatter)
 parser.add_argument('--custom_table', '-c', help='MIG CUSTOM TABLE', action='store_true', default='false')
@@ -319,7 +319,7 @@ def page_set(pageNum, pageSize):
     return startnum, endnum
 
 
-def insert_child2_thread(sql_list, start_index, insert_sql, table_name, get_table_count, log_path):
+def insert_child2_thread(sql_list, start_index, insert_sql, table_name, get_table_count, log_path, insert_size):
     mysql_host = configDB.mysql_host
     mysql_port = configDB.mysql_port
     mysql_user = configDB.mysql_user
@@ -341,7 +341,7 @@ def insert_child2_thread(sql_list, start_index, insert_sql, table_name, get_tabl
             print(traceback.format_exc() + '查询Oracle源表数据失败，请检查是否存在该表或者表名小写！\n\n')
             continue  # 这里需要显式指定continue，否则某张表不存在就会跳出此函数
         while True:
-            rows = list(ora_cur.fetchmany(10000))
+            rows = list(ora_cur.fetchmany(insert_size))
             if not rows:
                 break
             try:
@@ -378,7 +378,6 @@ def split_child1_mp(task_id, table_list, log_path):  # 这里是子进程,会被
     cur_oracle_result_split.outputtypehandler = dataconvert
     cur_oracle_result_split.prefetchrows = row_batch_size
     cur_oracle_result_split.arraysize = row_batch_size  # Oracle数据库游标对象结果集返回的行数即每次获取多少行
-    fetch_many_count = row_batch_size
     mysql_con_total = pymysql.connect(host=mysql_host, user=mysql_user, password=mysql_passwd, database=mysql_database,
                                       charset=mysql_dbchar, port=mysql_port)
     mysql_cursor_total = mysql_con_total.cursor()
@@ -457,7 +456,7 @@ def split_child1_mp(task_id, table_list, log_path):  # 这里是子进程,会被
         # v_index是对应分页查询列表的分片线程号，比如线程号1处理表A的分页查询0到10行记录，线程号2处理11-20行记录，线程号3处理剩余的
         with concurrent.futures.ThreadPoolExecutor(max_workers=16) as executor:
             task = {executor.submit(insert_child2_thread, split_sql, v_index, insert_sql, table_name, get_table_count,
-                                    log_path): v_index for v_index in range(len(split_sql))}
+                                    log_path, row_batch_size): v_index for v_index in range(len(split_sql))}
             for future in concurrent.futures.as_completed(task):
                 task_name = task[future]
                 try:
