@@ -1,7 +1,7 @@
 # oracle_to_mysql
 
 ![commit](https://img.shields.io/github/last-commit/iverycd/oracle_to_mysql?style=flat-square)
-[![tag](https://img.shields.io/github/v/release/iverycd/oracle_to_mysql?display_name=tag)](https://github.com/iverycd/oracle_to_mysql/releases/tag/v1.9.21.1)
+[![tag](https://img.shields.io/github/v/release/iverycd/oracle_to_mysql?display_name=tag)](https://github.com/iverycd/oracle_to_mysql/releases)
 ![languages](https://img.shields.io/github/languages/top/iverycd/oracle_to_mysql)
 [![linux](https://img.shields.io/badge/Linux-support-success?logo=linux)](https://github.com/iverycd/oracle_to_mysql/releases)
 [![win](https://img.shields.io/badge/Windows-support-success?logo=windows)](https://github.com/iverycd/oracle_to_mysql/releases)
@@ -41,6 +41,40 @@
 
 
 :camera:运行概览
+
+客户端硬件平台：
+
+| CPU | 内存 | 硬盘 |
+| :---------------: | :----------------: | :-----------------: |
+| Intel(R) Core(TM) i7-12700 2.10 GHz(8核16线程)| 芝奇皇家戟 DDR4 3600 32G    | 西数Nvme SN850        |
+
+
+服务端硬件平台
+
+| CPU | 内存 | 硬盘 |
+| :---------------: | :----------------: | :-----------------: |
+| Intel(R) Xeon(R) E5-2670 v2 2.50GHz(8核16线程)| 三星DDR4 32G      |   INTEL P3700 1.6T NVME     |
+
+在以上测试平台迁移Oracle一张2000万的表，通过多线程分页查询迁移`200秒`左右
+
+![image](https://user-images.githubusercontent.com/35289289/192426252-a4631991-2ddc-4e76-951d-a43eed58d65d.png)
+
+充分利用CPU多核心，提高数据迁移效率
+
+![image](https://user-images.githubusercontent.com/35289289/192426838-53eec0cf-dc4d-4731-9217-76b777bd6af2.png)
+
+****
+
+以下为单线程方式迁移Oracle一张2000万的表耗时`3000秒`左右
+
+![image](https://user-images.githubusercontent.com/35289289/192427224-b5b4d5d6-1237-4d8a-b655-8079306c3e8e.png)
+
+以下为单线程迁移数据可发现CPU利用率很低
+
+![image](https://user-images.githubusercontent.com/35289289/192427398-1903ae68-f41b-482a-a6d9-683b01591ad2.png)
+
+
+
 
 `全库迁移`
 
