@@ -10,7 +10,7 @@
 
 :sparkling_heart:功能特性
 
-:sparkles:支持运行在Linux以及Windows环境，已测试通过Oracle 11.2.0.4及以上，MySQL 5.7及以上
+:sparkles:支持Linux,Windows,MacOS，Oracle 11.2.0.4及以上，MySQL 5.7,8.0及以上测试通过
 
 :sparkles: 支持在线迁移Oracle到MySQL的表、视图、索引、触发器、外键、自增列、以及部分触发器，不支持存储过程以及函数的迁移
 
@@ -30,32 +30,41 @@
 
 :sparkles: 支持Oracle与MySQL表数量快速比对功能
 
-:sparkles: 可放到后台一键迁移Oracle到MySQL
-
 
 :star:环境要求
 
-- 在运行的客户端PC需要同时能连通源端Oracle数据库以及目标MySQL数据库
+- 运行此工具的PC需要能连通源端Oracle以及目标MySQL数据库
 
-- 支持Windows、Centos、MacOS
+- 依赖oracle客户端环境(release已集成instant client)
 
 
-:camera:运行概览
+:camera:平台测试
 
 客户端硬件平台：
 
-| CPU | 内存 | 硬盘 |
-| :---------------: | :----------------: | :-----------------: |
-| Intel(R) Core(TM) i7-12700 2.10 GHz(8核16线程)| 芝奇皇家戟 DDR4 3600 32G    | 西数Nvme SN850        |
+| CPU | 内存 | 硬盘 | 备注 |
+| :---------------: | :----------------: | :-----------------: | :-----------------: |
+| Intel(R) Core(TM) i7-12700 2.10 GHz(8核16线程)| 芝奇皇家戟 DDR4 3600 32G    | 西数SN850        | 迁移工具版本v1.9.27.1
 
 
 服务端硬件平台
 
-| CPU | 内存 | 硬盘 |
-| :---------------: | :----------------: | :-----------------: |
-| Intel(R) Xeon(R) E5-2670 v2 2.50GHz(8核16线程)| 三星DDR4 32G      |   INTEL P3700 1.6T NVME     |
+| CPU | 内存 | 硬盘 | 备注 |
+| :---------------: | :----------------: | :-----------------: |:-----------------: |
+| Intel(R) Xeon(R) E5-2670 v2 2.50GHz(8核16线程)| 三星DDR4 32G      |   INTEL P3700   | Oracle 11.2.0.4 MySQL 5.7.24
 
-在以上测试平台迁移Oracle一张2000万的表，通过多线程分页查询迁移`200秒`左右
+源端表结构
+
+```sql
+CREATE TABLE TABLE_2000W 
+(
+LOGFILE_DATA_ID NUMBER,
+NAME VARCHAR2(100)
+)
+
+```
+
+在以上测试平台迁移Oracle一张2000万的表，迁移耗时`200秒`左右
 
 ![image](https://user-images.githubusercontent.com/35289289/192426252-a4631991-2ddc-4e76-951d-a43eed58d65d.png)
 
@@ -65,16 +74,16 @@
 
 ****
 
-以下为单线程方式迁移Oracle一张2000万的表耗时`3000秒`左右
+`v1.9.21.1版本及以下`为单线程迁移数据，迁移Oracle一张2000万的表耗时`3000秒`左右
 
 ![image](https://user-images.githubusercontent.com/35289289/192427224-b5b4d5d6-1237-4d8a-b655-8079306c3e8e.png)
 
-以下为单线程迁移数据可发现CPU利用率很低
+`v1.9.21.1版本及以下`CPU利用率不高
 
 ![image](https://user-images.githubusercontent.com/35289289/192427398-1903ae68-f41b-482a-a6d9-683b01591ad2.png)
 
 
-
+:camera:运行概览
 
 `全库迁移`
 
@@ -115,7 +124,7 @@ https://www.oracle.com/database/technologies/instant-client/linux-x86-64-downloa
 
 或者直接下载当前资源库文件[linux_oracle_client.7z](https://github.com/iverycd/oracle_to_mysql/blob/master/linux_oracle_client.7z)
 
-以上解压并设定环境变量
+以上解压，并设定oracle client为正确路径的环境变量
 ```bash
 echo "export ORACLE_HOME=/opt/oracle_to_mysql/ora_client/instantclient_11_2"
 echo "export LD_LIBRARY_PATH=$ORACLE_HOME:$LD_LIBRARY_PATH"
@@ -126,7 +135,7 @@ echo "export PATH=$ORACLE_HOME:$PATH"
 
 下载当前资源库文件[mac_oracle_client.7z](https://github.com/iverycd/oracle_to_mysql/blob/master/mac_oracle_client.7z)
 
-将以上目录放在程序相同目录
+将以上目录放在程序相同目录或者自行设定oracle client为正确路径的环境变量
 
 ![image](https://user-images.githubusercontent.com/35289289/191474184-4f81036b-5cbc-4a3b-a7dc-3cc257e1cb4b.png)
 
@@ -141,7 +150,7 @@ https://www.oracle.com/database/technologies/instant-client/winx64-64-downloads.
 
 或者直接下载当前资源库文件[win_oracle_client.7z](https://github.com/iverycd/oracle_to_mysql/blob/master/win_oracle_client.7z)
 
-解压之后重命名目录名称为`oracle_client`并放到代码同路径，如下：
+解压之后重命名目录名称为`oracle_client`并放到代码同路径，如下（或者自行设定oracle client为正确路径的环境变量）：
 
 ![image](https://user-images.githubusercontent.com/35289289/190544799-b1c5e880-4582-4395-b990-d326d5ae613f.png)
 
@@ -159,6 +168,8 @@ port = 1521
 user = admin
 passwd = admin123
 service_name = orcl
+split_page_size = 10000  # 每个表分页查询的结果集总数
+split_process = 16 # 并行执行分页查询的线程数
 
 [mysql]
 host = 192.168.209.24
@@ -167,6 +178,7 @@ user = root
 passwd = Gep
 database = temptest
 dbchar = utf8mb4
+row_batch_size = 10000 # 每次插入到目标表的行数
 ```
 
 3、全库迁移
@@ -197,7 +209,7 @@ vi hooks/hook-prettytable.py
 from PyInstaller.utils.hooks import collect_data_files, copy_metadata
 datas = collect_data_files('prettytable') + copy_metadata('prettytable')
 
-运行打包脚本 `sh pack.sh`
+修改脚本为正确路径后，运行打包脚本 `sh pack.sh`
 ```
  
 `MacOS`打包
@@ -205,6 +217,7 @@ datas = collect_data_files('prettytable') + copy_metadata('prettytable')
 在程序所在目录运行
 
 ```python
+修改脚本为正确路径后，运行
 sh mac_pack.sh
 ```
 
@@ -213,13 +226,11 @@ sh mac_pack.sh
 
 `Win`
 
-运行bat脚本 `pack.bat`
+修改脚本为正确路径后，运行bat脚本 `pack.bat`
 
 ## :gift:开箱即用的二进制可执行文件
 
 下载[release](https://github.com/iverycd/oracle_to_mysql/releases/)
-
-分别对应win、linux、Mac
 
 [![linux](https://img.shields.io/badge/Linux-support-success?logo=linux)](https://github.com/iverycd/oracle_to_mysql/releases)
 [![win](https://img.shields.io/badge/Windows-support-success?logo=windows)](https://github.com/iverycd/oracle_to_mysql/releases)
@@ -241,9 +252,10 @@ sh mac_pack.sh
 
 
 
-### :trident:全库迁移
+### 全库迁移示例
 
 #### Linux环境
+
 
 1、进入迁移工具目录
 
@@ -272,19 +284,22 @@ sh mac_pack.sh
 [root@localhost ]# vi config.ini 
 
 [oracle]
-host = 192.168.21.2
+host = 192.168.212.23
 port = 1521
 user = admin
 passwd = admin123
 service_name = orcl
+split_page_size = 10000  # 每个表分页查询的结果集总数
+split_process = 16 # 并行执行分页查询的线程数
 
 [mysql]
-host = 192.168.20.2
+host = 192.168.209.24
 port = 3306
 user = root
-passwd = Ge
+passwd = Gep
 database = temptest
 dbchar = utf8mb4
+row_batch_size = 10000 # 每次插入到目标表的行数
 
 ```
 
@@ -341,7 +356,8 @@ dbchar = utf8mb4
 
 
 
-#### MacOS环境(兼容M1系列CPU)
+#### MacOS环境
+
 
 终端内执行即可：
 
@@ -351,6 +367,8 @@ dbchar = utf8mb4
 
 
 #### Windows环境
+
+
 
 Windows环境与Linux环境类似，下载压缩包之后解压到任意目录
 
@@ -363,6 +381,8 @@ port = 1521
 user = admin
 passwd = admin123
 service_name = orcl
+split_page_size = 10000  # 每个表分页查询的结果集总数
+split_process = 16 # 并行执行分页查询的线程数
 
 [mysql]
 host = 192.168.209.24
@@ -371,6 +391,7 @@ user = root
 passwd = Gep
 database = temptest
 dbchar = utf8mb4
+row_batch_size = 10000 # 每次插入到目标表的行数
 ```
 
 2、cmd进入迁移工具目录
