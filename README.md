@@ -44,7 +44,7 @@
 
 | CPU | 内存 | 硬盘 | 备注 |
 | :---------------: | :----------------: | :-----------------: | :-----------------: |
-| Intel(R) Core(TM) i7-12700 2.10 GHz(8核16线程)| 芝奇皇家戟 DDR4 3600 32G    | 西数SN850        | 迁移工具版本v1.9.27.1
+| Intel(R) Core(TM) i7-12700 2.10 GHz(12核20线程)| 芝奇皇家戟 DDR4 3600 32G    | 西数SN850        | 迁移工具版本v1.9.28.4
 
 
 服务端硬件平台
@@ -115,6 +115,9 @@ NAME VARCHAR2(100)
 
 `Linux`
 
+![image](https://user-images.githubusercontent.com/35289289/192779340-0923d22d-a746-442c-8aae-2add127c9ffd.png)
+
+
 下载Linux Instant Client（11.2.0.4及以上都行)
 
 https://www.oracle.com/database/technologies/instant-client/linux-x86-64-downloads.html
@@ -133,6 +136,9 @@ echo "export PATH=$ORACLE_HOME:$PATH"
 
 `MAC`
 
+![image](https://user-images.githubusercontent.com/35289289/192779668-74a4b16e-d49d-4dc3-90ed-f2b946ada797.png)
+
+
 下载当前资源库文件[mac_oracle_client.7z](https://github.com/iverycd/oracle_to_mysql/blob/master/mac_oracle_client.7z)
 
 将以上目录放在程序相同目录或者自行设定oracle client为正确路径的环境变量
@@ -141,6 +147,9 @@ echo "export PATH=$ORACLE_HOME:$PATH"
 
 
 `Win`
+
+![image](https://user-images.githubusercontent.com/35289289/192779816-f48c0086-b519-4280-ae0f-99c8f6cd9533.png)
+
 
 下载Windows Instant Client（11.2.0.4及以上都行)
 
