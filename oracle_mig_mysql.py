@@ -20,10 +20,11 @@ from concurrent.futures import ThreadPoolExecutor
 
 """
 Oracle database migration to MySQL
-V1.9.27.1
-优化每次插入到目标数据库的行数由row_batch_size控制
+V1.9.28.4
+将WM_CONCAT替换为listagg用来获取外键拼接SQL
+修改mac打包
 """
-version = '1.9.27.1'
+version = '1.9.28.4'
 
 parser = argparse.ArgumentParser(prog='oracle_mig_mysql', formatter_class=argparse.RawDescriptionHelpFormatter)
 parser.add_argument('--custom_table', '-c', help='MIG CUSTOM TABLE', action='store_true', default='false')
@@ -60,18 +61,18 @@ split_process = int(config.get_oracle('split_process'))
 
 # 记录执行日志
 class Logger(object):
-    def __init__(self, filename='default.log', add_flag=True, stream=sys.stdout):
+    def __init__(self, filename='run.log', add_flag=True, stream=open(sys.stdout.fileno(), mode='w', encoding='utf8', buffering=1)):
         self.terminal = stream
         self.filename = filename
         self.add_flag = add_flag
 
     def write(self, message):
         if self.add_flag:
-            with open(self.filename, 'a+') as log:
+            with open(self.filename, 'a+', encoding='utf-8') as log:
                 self.terminal.write(message)
                 log.write(message)
         else:
-            with open(self.filename, 'w') as log:
+            with open(self.filename, 'w', encoding='utf-8') as log:
                 self.terminal.write(message)
                 log.write(message)
 
@@ -198,7 +199,7 @@ def mig_part_tbl_columns(log_path):
                 cur_oracle_result.execute("""select count(*) from %s""" % source_table)
                 get_table_count = cur_oracle_result.fetchone()[0]
             except Exception as e:
-                print('获取源表总数以及列总数失败，请检查是否存在该表或者表名小写！' + table_name)
+                print('get total table count and coluns failed ' + table_name)
                 err_count += 1
                 sql_insert_error = traceback.format_exc()
                 filename = log_path + 'insert_failed_table.log'
@@ -223,7 +224,7 @@ def mig_part_tbl_columns(log_path):
                 mysql_cur.execute("""insert into my_mig_task_info(table_name, task_start_time,thread) values ('%s',
                         current_timestamp(3),%s)""" % (table_name, list_index))  # %s占位符的值需要引号包围
             except Exception:
-                print('目标表不存在', traceback.format_exc())
+                print('target table not exists', traceback.format_exc())
             page_size = split_page_size
             total_page_num = round((get_table_count + page_size - 1) / page_size)  # 自动计算总共有几页
             for page_index in range(total_page_num):  # 例如总共有100行记录，每页10条记录，那么需要循环10次
@@ -243,7 +244,7 @@ def mig_part_tbl_columns(log_path):
                 try:
                     cur_oracle_result.execute(select_sql)  # 执行
                 except Exception:
-                    print(traceback.format_exc() + '查询Oracle源表数据失败，请检查是否存在该表或者表名小写！\n\n' + table_name)
+                    print(traceback.format_exc() + 'select source table failed\n\n' + table_name)
                     continue  # 这里需要显式指定continue，否则某张表不存在就会跳出此函数
                 while True:
                     rows = list(
@@ -272,7 +273,7 @@ def mig_part_tbl_columns(log_path):
                 else:
                     is_success = 'N'
                 print(
-                    f'[{table_name}]  source rows：{get_table_count} target rows：{target_effectrow}  THREAD {list_index} {str(datetime.datetime.now())}\n',
+                    f'[{table_name}]  source rows:{get_table_count} target rows:{target_effectrow}  THREAD {list_index} {str(datetime.datetime.now())}\n',
                     end='')
             try:
                 mysql_cur.execute("""update my_mig_task_info set task_end_time=current_timestamp(3), 
@@ -338,7 +339,7 @@ def insert_child2_thread(sql_list, start_index, insert_sql, table_name, get_tabl
         try:
             ora_cur.execute(sp_sql)  # 执行
         except Exception:
-            print(traceback.format_exc() + '查询Oracle源表数据失败，请检查是否存在该表或者表名小写！\n\n')
+            print(traceback.format_exc() + 'select source table failed please check where lowcase table_name\n\n')
             continue  # 这里需要显式指定continue，否则某张表不存在就会跳出此函数
         while True:
             rows = list(ora_cur.fetchmany(insert_size))
@@ -402,7 +403,7 @@ def split_child1_mp(task_id, table_list, log_path):  # 这里是子进程,会被
                     """select trim(',' from (xmlagg(xmlparse(content '"'||column_name||'"'||',') order by COLUMN_ID).getclobval()))  from user_tab_columns where table_name='%s'""" % source_table)
                 col_name = cur_oracle_result_split.fetchone()[0]
             except Exception as e:
-                print(e, '获取列名失败')
+                print(e, 'get column name failed')
                 err_count += 1
                 sql_insert_error = '\n' + '/* ' + str(e) + ' */' + '\n'
                 filename = log_path + 'insert_failed_table.log'
@@ -413,7 +414,7 @@ def split_child1_mp(task_id, table_list, log_path):  # 这里是子进程,会被
                 f.write(sql_insert_error + '\n\n')
                 f.close()
         except Exception as e:
-            print(traceback.format_exc() + '获取源表总数以及列总数失败，请检查是否存在该表或者表名小写！' + table_name)
+            print(traceback.format_exc() + 'get table and columns total count failed' + table_name)
             err_count += 1
             filename = log_path + 'insert_failed_table.log'
             f = open(filename, 'a', encoding='utf-8')
@@ -481,7 +482,7 @@ def parent_process(new_list, log_path):  # 这里是主进程,多进程时调用
     [p.join() for p in process_list]  # 等待两个进程依次结束
     end_time = datetime.datetime.now()
     print('FINISH MIGRATING! ' + str(datetime.datetime.now()) + ' \n')
-    print('ELAPSED TIME：' + str((end_time - begin_time).seconds) + '\n')
+    print('ELAPSED TIME:' + str((end_time - begin_time).seconds) + '\n')
     #  计算每张表插入时间
     try:
         mysql_cursor.execute(
@@ -574,7 +575,7 @@ def main():
                                                                          encoding='utf-8') as fd:
             row_count = len(fr.readlines())
         if row_count < 1:
-            print('!!!请检查当前目录custom_table.txt是否有表名!!!\n\n\n')
+            print('please check custom_table.txt file content is blank\n\n\n')
             time.sleep(2)
             sys.exit(0)
         #  在当前目录下编辑custom_table.txt，然后对该文件做去掉空行处理，输出到tmp目录

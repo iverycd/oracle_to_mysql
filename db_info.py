@@ -24,7 +24,7 @@ def tbl_columns(table_name, fix_mode='N'):
     try:
         output_table_col = oracle_cursor.fetch_all(sql)
     except Exception as e:
-        print(e, '获取表结构失败')
+        print(e, 'get table column failed')
     result = []
     exclude_default_str = ['SYSDATE', 'SYS_GUID', 'USER']
     # primary_key = table_primary(table_name)
@@ -67,7 +67,7 @@ def tbl_columns(table_name, fix_mode='N'):
                         oracle_cursor.fetch_one(
                             """select nvl(max(length(%s)),0)  from \"%s\"""" % (col_name, tbl_name))[0]
                 except Exception as e:
-                    print(e, '获取列实际最大长度失败！')
+                    print(e, 'get actual column length failed')
                 if col_len == 0:  # 如果某些表没有数据。默认长度为100
                     col_len = 100
                 else:
@@ -149,7 +149,7 @@ def tbl_columns(table_name, fix_mode='N'):
         # 数值类型映射规则，判断Oracle number类型是否是浮点，是否是整数，转为MySQL的int或者decimal。下面分了3种情况区分整数与浮点
         # column[n] == -1,即DATA_PRECISION，DATA_SCALE，AVG_COL_LEN为null，仅在如下if条件判断是否为空
         elif column[1] == 'NUMBER':
-            # 场景1：浮点类型判断，如number(5,2)映射为MySQL的DECIMAL(5,2)
+            # 场景1:浮点类型判断，如number(5,2)映射为MySQL的DECIMAL(5,2)
             # Oracle number(m,n) -> MySQL decimal(m,n)
             if column[3] > 0 and column[4] > 0:
                 result.append({'fieldname': column[0],
@@ -160,7 +160,7 @@ def tbl_columns(table_name, fix_mode='N'):
                                'comment': column[6]
                                }
                               )
-            # 场景2：整数类型以及平均字段长度判断，如number(20,0)，如果AVG_COL_LEN比较大，映射为MySQL的bigint
+            # 场景2:整数类型以及平均字段长度判断，如number(20,0)，如果AVG_COL_LEN比较大，映射为MySQL的bigint
             # column[8] >= 6 ,Oracle number(m,0) -> MySQL bigint
             elif column[3] > 0 and column[4] == 0 and column[8] >= 6:
                 # number类型的默认值有3种情况，一种是null，一种是字符串值为null，剩余其他类型只提取默认值数字部分
@@ -194,7 +194,7 @@ def tbl_columns(table_name, fix_mode='N'):
                                    }
                                   )
 
-            # 场景3：整数类型以及平均字段长度判断，如number(10,0)，如果AVG_COL_LEN比较小，映射为MySQL的INT
+            # 场景3:整数类型以及平均字段长度判断，如number(10,0)，如果AVG_COL_LEN比较小，映射为MySQL的INT
             # column[8] < 6 ,Oracle number(m,0) -> MySQL bigint
             elif column[3] > 0 and column[4] == 0 and column[8] < 6:
                 if column[7] is None:  # 对Oracle number字段类型默认值为null的判断
@@ -236,7 +236,7 @@ def tbl_columns(table_name, fix_mode='N'):
                                    }
                                   )
 
-            # 场景4：无括号包围的number整数类型以及长度判断，如id number,若AVG_COL_LEN比较大，映射为MySQL的bigint
+            # 场景4:无括号包围的number整数类型以及长度判断，如id number,若AVG_COL_LEN比较大，映射为MySQL的bigint
             # column[8] >= 6 ,Oracle number -> MySQL bigint
             elif column[3] == -1 and column[4] == -1 and column[8] >= 6:
                 if column[7] is None:  # 对Oracle number字段类型默认值为null的判断
@@ -278,7 +278,7 @@ def tbl_columns(table_name, fix_mode='N'):
                                    }
                                   )
 
-            # 场景5：无括号包围的number整数类型判断，如id number,若AVG_COL_LEN比较小，映射为MySQL的INT
+            # 场景5:无括号包围的number整数类型判断，如id number,若AVG_COL_LEN比较小，映射为MySQL的INT
             # column[8] < 6 ,Oracle number -> MySQL int
             elif column[3] == -1 and column[4] == -1 and column[8] < 6:
                 if column[7] is None:  # 对默认值是否为null的判断
@@ -311,7 +311,7 @@ def tbl_columns(table_name, fix_mode='N'):
                                    }
                                   )
 
-            # 场景6：int整数类型判断，如id int,(oracle的int会自动转为number),若AVG_COL_LEN比较大，映射为MySQL的bigint
+            # 场景6:int整数类型判断，如id int,(oracle的int会自动转为number),若AVG_COL_LEN比较大，映射为MySQL的bigint
             elif column[3] == -1 and column[4] == 0 and column[8] >= 6:
                 if column[7] is None:  # 对默认值是否为null的判断
                     result.append({'fieldname': column[0],
@@ -343,7 +343,7 @@ def tbl_columns(table_name, fix_mode='N'):
                                    }
                                   )
 
-            # 场景7：int整数类型判断，如id int,(oracle的int会自动转为number)若AVG_COL_LEN比较小，映射为MySQL的INT
+            # 场景7:int整数类型判断，如id int,(oracle的int会自动转为number)若AVG_COL_LEN比较小，映射为MySQL的INT
             elif column[3] == -1 and column[4] == 0 and column[8] < 6:
                 if column[7] is None:  # 对默认值是否为null的判断
                     result.append({'fieldname': column[0],
@@ -408,7 +408,7 @@ def tbl_columns(table_name, fix_mode='N'):
 
 
 # 打印连接信息
-def get_info(run_method, mode, log_path,version):
+def get_info(run_method, mode, log_path, version):
     oracle_cursor = configDB.OraclePool()  # Oracle连接池
     mysql_cursor = configDB.MySQLPOOL.connection().cursor()  # MySQL连接池
     oracle_info = oracle_cursor._OraclePool__pool._kwargs
@@ -417,9 +417,9 @@ def get_info(run_method, mode, log_path,version):
     k = prettytable.PrettyTable(field_names=["Oracle Migrate MySQL Tool"])
     k.align["Oracle Migrate MySQL Tool"] = "l"
     k.padding_width = 1  # 填充宽度
-    k.add_row(["Support Database: MySQL 5.7 and Oracle 11g higher"])
-    k.add_row(["Version: " + version])
-    k.add_row(["Powered By: Epoint Infrastructure Research Center"])
+    k.add_row(["Support Database MySQL 5.7 and Oracle 11g higher"])
+    k.add_row(["Version " + version])
+    k.add_row(["Powered By Epoint Infrastructure Research Center"])
     print(k.get_string(sortby="Oracle Migrate MySQL Tool", reversesort=False))
     print('\nSource Database information:')
     # print source connect info
@@ -491,7 +491,7 @@ def get_info(run_method, mode, log_path,version):
         is_continue = 'Y'
         print('QUITE MODE ')
     else:
-        is_continue = input('\nREADY FOR MIGRATING DATABASE ?：(PLEASE INPUT "Y" OR "N" TO CONTINUE)\n')
+        is_continue = input('\nREADY FOR MIGRATING DATABASE ?:(PLEASE INPUT "Y" OR "N" TO CONTINUE)\n')
     if is_continue == 'Y' or is_continue == 'y':
         print('GO')  # continue
     else:
@@ -503,7 +503,8 @@ def get_info(run_method, mode, log_path,version):
         is_success varchar(100),run_status varchar(10))""")
 
 
-def run_info(exepath,log_path, mig_start_time, mig_end_time, all_table_count, list_success_table, ddl_failed_table_result,
+def run_info(exepath, log_path, mig_start_time, mig_end_time, all_table_count, list_success_table,
+             ddl_failed_table_result,
              all_constraints_count,
              all_constraints_success_count,
              function_based_index_count, constraint_failed_count, all_fk_count, all_fk_success_count,
@@ -545,7 +546,7 @@ def run_info(exepath,log_path, mig_start_time, mig_end_time, all_table_count, li
     finally:
         csv_file.close()
     if ddl_failed_table_result:  # 输出失败的对象
-        print("\n\nCREATE FAILED TABLE BELOW：")
+        print("\n\nCREATE FAILED TABLE BELOW:")
         for output_ddl_failed_table_result in ddl_failed_table_result:
             print(output_ddl_failed_table_result)
         print('\n\n\n')
@@ -556,23 +557,23 @@ def run_info(exepath,log_path, mig_start_time, mig_end_time, all_table_count, li
         print('\n\n\n')
     print('TARGET DATABASE NAME: ' + mysql_database_name)
     # print('目标表成功创建计数: ' + str(mysql_table_count))
-    print('1、TABLE  TOTAL: ' + str(
+    print('1 TABLE  TOTAL: ' + str(
         oracle_tab_count) + ' TARGET SUCCESS TABLE: ' + mysql_success_table_count + ' TARGET FAILED TABLE: ' + str(
         table_failed_count))
-    print('2、VIEW TOTAL: ' + str(
+    print('2 VIEW TOTAL: ' + str(
         oracle_view_count) + ' TARGET SUCCESS VIEW : ' + mysql_success_view_count + ' TARGET FAILED VIEW: ' + str(
         view_error_count))
-    print('3、AUTO INCREMENT COL: ' + str(
+    print('3 AUTO INCREMENT COL: ' + str(
         oracle_autocol_total) + ' TARGET SUCCESS COL: ' + mysql_success_incol_count + ' TARGET FAILED COL: ' + str(
         autocol_error_count))
-    print('4、TRIGGER TOTAL: ' + str(
+    print('4 TRIGGER TOTAL: ' + str(
         normal_trigger_count) + ' TARGET SUCCESS TIGGER: ' + str(
         trigger_success_count) + ' TARGET FAILED TRIGGER: ' + str(
         trigger_failed_count))
-    print('5、CONSTRAINT INDEX TOTAL: ' + str(
+    print('5 CONSTRAINT INDEX TOTAL: ' + str(
         oracle_constraint_count) + ' TARGET SUCCESS INDEX: ' + mysql_success_constraint + ' TARGET FAILED INDEX: ' + str(
         index_failed_count))
-    print('6、FOREIGN KET TOTAL: ' + str(
+    print('6 FOREIGN KET TOTAL: ' + str(
         oracle_fk_count) + ' TARGET SUCCESS FK: ' + mysql_success_fk + ' TARGET FAILED FK: ' +
           str(fk_failed_count))
     print('\nPLEASE CHECK FAILED TABLE DDL IN LOG DIR')
@@ -613,7 +614,7 @@ def cte_tab(log_path, is_custom_table):
         except Exception as e:
             structs = []
             ddl_failed_table_result.append(table_name)
-            print('获取表结构失败或者正则匹配列异常',e)
+            print('can not get column name,please check oracle table', e)
             table_index = table_index + 1
             filename = log_path + 'ddl_failed_table.log'
             f = open(filename, 'a', encoding='utf-8')
@@ -713,7 +714,7 @@ def cte_tab(log_path, is_custom_table):
                     f.write('\n' + '/* ' + str(ee.args) + ' */' + '\n')
                     f.close()
                     ddl_failed_table_result.append(table_name)  # 将当前ddl创建失败的表名记录到ddl_failed_table_result的list中
-                    print('表' + table_name + '创建失败请检查ddl语句!\n')
+                    print('table ' + table_name + ' create failed\n')
     endtime = datetime.datetime.now()
     print("CREATE TABLE RUN TIME\n" + "BEGIN TIME:" + str(starttime) + '\n' + "END TIME:" + str(
         endtime) + '\n' + "Elapsed:" + str(
@@ -817,7 +818,7 @@ def cte_idx(log_path, is_custom_table):
                       C.CONSTRAINT_TYPE""")  # 如果要每张表查使用T.TABLE_NAME = '%s',%s传进去是没有单引号，所以需要用单引号号包围
     all_constraints_count = len(all_index)
     if all_constraints_count > 0:
-        print('CREATE normal index：\n')
+        print('CREATE normal index:\n')
         index_num = 0
         for d in all_index:
             index_num += 1
@@ -866,7 +867,7 @@ def cte_idx(log_path, is_custom_table):
             """Select index_name from user_indexes where index_type='FUNCTION-BASED NORMAL'""")
     function_based_index_count = len(function_based_index)  # 如果有非normal索引
     if function_based_index_count > 0:
-        print('CREATE NON normal index：\n')
+        print('CREATE NON normal index:\n')
     for v_function_based_index in function_based_index:
         fun_index_name = v_function_based_index[0]
         try:  # 下面是生成非normal索引的拼接sql，来源于dbms_metadata.get_ddl
@@ -881,7 +882,7 @@ def cte_idx(log_path, is_custom_table):
         except Exception as e:
             constraint_failed_count += 1
             print('\n' + '/* ' + str(e.args) + ' */' + '\n')
-            print('NON NORMAL INDEX CREATE ERROR !\n')
+            print('NON NORMAL INDEX CREATE ERROR\n')
             filename = log_path + 'ddl_failed_table.log'
             f = open(filename, 'a', encoding='utf-8')
             f.write('\n-- ' + 'NON NORMAL INDEX CREATE ERROR ' + str(constraint_failed_count) + '\n')
@@ -890,13 +891,16 @@ def cte_idx(log_path, is_custom_table):
             f.close()
     print(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
     end_time = datetime.datetime.now()
-    print('CREATE INDEX CONSTRAINT ELAPSED TIME： ' + str((end_time - start_time).seconds))
+    print('CREATE INDEX CONSTRAINT ELAPSED TIME: ' + str((end_time - start_time).seconds))
     print('#' * 50 + 'CONSTRAINT INDEX FINISH' + '#' * 50 + '\n\n\n')
     return all_constraints_count, all_constraints_success_count, function_based_index_count, constraint_failed_count
 
 
 # 批量创建外键
 def fk(log_path, is_custom_table):
+    """
+    11g以及之前的能用WMSYS.WM_CONCAT(A.COLUMN_NAME)，之后需使用listagg(A.COLUMN_NAME,',') within group(order by a.position)
+    """
     oracle_cursor = configDB.OraclePool()  # Oracle连接池
     mysql_cursor = configDB.MySQLPOOL.connection().cursor()  # MySQL连接池
     all_fk_count = 0
@@ -917,18 +921,23 @@ def fk(log_path, is_custom_table):
         print('START CREATE FOREIGN KEY')
         for v_result_table in fk_table:  # 获得一张表创建外键的拼接语句，按照每张表顺序来创建外键
             table_name = v_result_table[0]
-            all_foreign_key = oracle_cursor.fetch_all("""SELECT 'ALTER TABLE ' || B.TABLE_NAME || ' ADD CONSTRAINT ' ||
+            try:
+                all_foreign_key = oracle_cursor.fetch_all("""SELECT 'ALTER TABLE ' || B.TABLE_NAME || ' ADD CONSTRAINT ' ||
                             B.CONSTRAINT_NAME || ' FOREIGN KEY (' ||
-                            (SELECT TO_CHAR(WMSYS.WM_CONCAT(A.COLUMN_NAME))
+                            (SELECT listagg(A.COLUMN_NAME,',') within group(order by a.position)
                                FROM USER_CONS_COLUMNS A
                               WHERE A.CONSTRAINT_NAME = B.CONSTRAINT_NAME) || ') REFERENCES ' ||
                             (SELECT B1.table_name FROM USER_CONSTRAINTS B1
                               WHERE B1.CONSTRAINT_NAME = B.R_CONSTRAINT_NAME) || '(' ||
-                            (SELECT TO_CHAR(WMSYS.WM_CONCAT(A.COLUMN_NAME))
+                            (SELECT listagg(A.COLUMN_NAME,',') within group(order by a.position)
                                FROM USER_CONS_COLUMNS A
                               WHERE A.CONSTRAINT_NAME = B.R_CONSTRAINT_NAME) || ');'
                        FROM USER_CONSTRAINTS B
                       WHERE B.CONSTRAINT_TYPE = 'R' and TABLE_NAME='%s'""" % table_name)
+            except Exception as e:
+                all_foreign_key = []
+                fk_err_count += 1
+                print('table ', table_name, 'create foreign key failed ', e)
             for e in all_foreign_key:  # 根据上面的查询结果集，创建外键
                 create_foreign_key_sql = e[0]
                 print(create_foreign_key_sql)
@@ -962,7 +971,7 @@ def fk(log_path, is_custom_table):
         print('NO FOREIGN KEY')
     print(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
     end_time = datetime.datetime.now()
-    print('CREATE FOREIGN KEY ELASPSED TIME： ' + str((end_time - begin_time).seconds))
+    print('CREATE FOREIGN KEY ELASPSED TIME: ' + str((end_time - begin_time).seconds))
     print('#' * 50 + 'FINISH CREATE FOREIGN KEY' + '#' * 50 + '\n\n\n')
     return all_fk_count, all_fk_success_count, fk_err_count
 
@@ -1023,7 +1032,7 @@ def cte_trg(log_path, is_custom_table):
                         """update trigger_name set trigger_body=replace(trigger_body,chr(10),'')""")
                 except Exception:
                     print(traceback.format_exc())
-                    print('update trigger_name ERROR！')
+                    print('update trigger_name ERROR')
 
     else:  # 创建所有自增列索引
         try:
@@ -1043,7 +1052,7 @@ def cte_trg(log_path, is_custom_table):
             oracle_cursor.execute_sql("""update trigger_name set trigger_body=replace(trigger_body,chr(10),'')""")
         except Exception:
             print(traceback.format_exc())
-            print('update trigger_name ERROR！')
+            print('update trigger_name ERROR')
     all_create_index = oracle_cursor.fetch_all(
         """select distinct sql_create
 from
@@ -1076,7 +1085,7 @@ select to_char('create index ids_'||substr(table_name,1,26)||' on '||table_name|
                 count_1 += 1
                 all_inc_col_failed_count += 1
                 print('\n' + '/* ' + str(e) + ' */' + '\n')
-                print('create_autoincrea_index ERROR！\n')
+                print('create_autoincrea_index ERROR\n')
                 # print(traceback.format_exc())
                 filename = log_path + 'ddl_failed_table.log'
                 f = open(filename, 'a', encoding='utf-8')
@@ -1089,7 +1098,7 @@ select to_char('create index ids_'||substr(table_name,1,26)||' on '||table_name|
                 logging.error(ddl_incindex_error)  # 自增用索引创建失败的sql语句输出到文件ddl_failed_table.log
         print('AUTO COL INDEX FINISH ' + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
 
-        print('\nSTART MODIFY AUTO COL ATTRIBUTE：')
+        print('\nSTART MODIFY AUTO COL ATTRIBUTE:')
         print(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
         all_alter_sql = oracle_cursor.fetch_all("""SELECT to_char(
   'alter table ' || table_name || ' modify ' || upper(
@@ -1132,7 +1141,7 @@ WHERE
             except Exception as e:  # 如果有异常打印异常信息，并跳过继续下个自增列修改
                 all_inc_col_failed_count += 1
                 print('\n' + '/* ' + str(e) + ' */' + '\n')
-                print('ALTER AUTO COL FAIL！\n')
+                print('ALTER AUTO COL FAIL\n')
                 # print(traceback.format_exc())
                 filename = log_path + 'ddl_failed_table.log'
                 f = open(filename, 'a', encoding='utf-8')
@@ -1144,13 +1153,13 @@ WHERE
                     """update my_mig_task_info set run_status='failed' where table_name='%s' """ % alter_increa_col)
         print(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
         end_time = datetime.datetime.now()
-        print('ALTER AUTO COL ELAPSED TIME： ' + str((end_time - start_time).seconds))
+        print('ALTER AUTO COL ELAPSED TIME: ' + str((end_time - start_time).seconds))
         print('#' * 50 + 'FINISH AUTO COL' + '#' * 50 + '\n\n\n')
         oracle_autocol_total = oracle_cursor.fetch_one(
             """select count(*) from trigger_name  where trigger_type='BEFORE EACH ROW' and instr(upper(trigger_body), 'NEXTVAL')>0""")[
             0]  # 将自增列的总数存入list
     else:
-        print('NO AUTO COL！')
+        print('NO AUTO COL')
     print('#' * 50 + 'END AUTO COL' + '#' * 50 + '\n')
     try:
         oracle_cursor.execute_sql("""drop table trigger_name purge""")  # 删除之前在oracle创建的临时表
@@ -1177,7 +1186,7 @@ WHERE
             print(e)
     normal_trigger_count = len(normal_trigger)
     if normal_trigger_count > 0:
-        print('START CREATE NORMAL TRIGGER：\n')
+        print('START CREATE NORMAL TRIGGER:\n')
         for v_normal_trigger in normal_trigger:
             trigger_name = v_normal_trigger[0]
             try:
@@ -1256,7 +1265,7 @@ def cte_comt(log_path, is_custom_table):
         print('NO COMMENT')
     print(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
     end_time = datetime.datetime.now()
-    print('CREATE  COMMENT ELAPSED TIME：' + str((end_time - begin_time).seconds))
+    print('CREATE  COMMENT ELAPSED TIME:' + str((end_time - begin_time).seconds))
     print('#' * 50 + 'comment FINISH' + '#' * 50 + '\n\n\n')
 
 
@@ -1379,7 +1388,7 @@ def func_proc(log_path):
             f.write((ddl_sql.replace('"' + current_user + '".', '')).replace('"', ''))  # 去掉模式名以及双引号包围
             f.close()
     except Exception as e:
-        print('查询存储过程以及函数失败！' + str(e))
+        print('get function and procedure content failed' + str(e))
 
 
 if __name__ == "__main__":

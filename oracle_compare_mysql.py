@@ -9,14 +9,13 @@ import readConfig
 import configDB
 
 """
-MySQL database compare data and tables with oracle
-oracle_compare_mysql.py v1.5.1 2022-09-16 Linux py 37
-精简代码
+v1.9.28.2
+修复非utf8终端输出异常问题
 """
 
 
 class Logger(object):
-    def __init__(self, filename='default.log', add_flag=True, stream=sys.stdout):
+    def __init__(self, filename='com.log', add_flag=True, stream=open(sys.stdout.fileno(), mode='w', encoding='utf8', buffering=1)):
         self.terminal = stream
         self.filename = filename
         self.add_flag = add_flag
@@ -24,11 +23,11 @@ class Logger(object):
 
     def write(self, message):
         if self.add_flag:
-            with open(self.filename, 'a+') as log:
+            with open(self.filename, 'a+', encoding='utf-8') as log:
                 self.terminal.write(message)
                 log.write(message)
         else:
-            with open(self.filename, 'w') as log:
+            with open(self.filename, 'w', encoding='utf-8') as log:
                 self.terminal.write(message)
                 log.write(message)
 
@@ -74,13 +73,13 @@ def data_compare_single(sourcedb, target_db,oracle_cursor,mysql_cursor):  # 手�
     target_view_name = ''
     src_out, trg_out = check_db_exist(sourcedb, target_db,oracle_cursor,mysql_cursor)
     if src_out == 0:
-        print(sourcedb, '在源数据库不存在\nEXIT!')
+        print(sourcedb, 'source db not exist\nEXIT!')
         sys.exit()
     elif trg_out == 0:
-        print(target_db, '在目标数据库不存在此模式名\nEXIT!')
+        print(target_db, 'target database not exists schema\nEXIT!')
         sys.exit()
     else:  # 检查源库、目标库名称是否存在之后，开始比较
-        print('开始比较全库数量差异\n源模式名称:', sourcedb, '目标数据库名:', target_db)
+        print('begin compare source and target db\nsource_db:', sourcedb, 'target_db:', target_db)
         print('----------------------')
         # 先根据oracle的表名查每个表的行数
         oracle_cursor.execute("""select table_name from user_tables where table_name !='DATA_COMPARE'""")
@@ -89,7 +88,7 @@ def data_compare_single(sourcedb, target_db,oracle_cursor,mysql_cursor):  # 手�
         mysql_cursor.execute("""select count(*) from information_schema.TABLES where TABLE_SCHEMA='%s' and TABLE_TYPE='BASE TABLE' and 
                     table_name not in ('DATA_COMPARE','MY_MIG_TASK_INFO')""" % target_db)  # 获取MySQL表总数
         target_table_total = mysql_cursor.fetchone()[0]  # 获取MySQL表总数
-        print('表总数:' + '源数据库 ' + str(source_table_total) + ' 目标数据库 ' + str(target_table_total))
+        print('table total count:' + 'source db ' + str(source_table_total) + ' target db ' + str(target_table_total))
         for v_out_table in out_table:
             source_table = v_out_table[0]
             table_id += 1
@@ -97,7 +96,7 @@ def data_compare_single(sourcedb, target_db,oracle_cursor,mysql_cursor):  # 手�
                 oracle_cursor.execute("""select count(*) from %s.\"%s\"""" % (sourcedb, source_table))
                 source_rows = oracle_cursor.fetchone()[0]  # 源表行数
             except Exception as e:
-                print(e, '获取源表行数失败')
+                print(e, 'get source table row count failed')
             try:
                 target_db_name = target_db
                 # 这里判断下源表的名称在目标数据库是否存在
@@ -113,7 +112,7 @@ def data_compare_single(sourcedb, target_db,oracle_cursor,mysql_cursor):  # 手�
                     target_table_name = 'TABLE NOT EXIST'  # 目标表不存在就将表命名为TABLE NOT EXIST
                     target_rows = -1
             except Exception as e:
-                print(e, ' 在目标数据库查询表' + source_table + '失败')
+                print(e, ' target db table  ' + source_table + ' select failed')
             try:  # 将以上比对的数据保存在目标库的表里
                 if (source_rows != target_rows) or (source_table.upper() != target_table_name.upper()):
                     is_success = 'N'
@@ -135,7 +134,7 @@ def data_compare_single(sourcedb, target_db,oracle_cursor,mysql_cursor):  # 手�
                     target_rows, is_success.upper()))
                 mysql_cursor.execute('commit')
             except Exception as e:
-                print(e, '数据比对结果保存在目标表失败')
+                print(e, 'save result failed in target db')
                 mysql_cursor.execute('rollback')
         # 视图比较
         try:
@@ -143,14 +142,14 @@ def data_compare_single(sourcedb, target_db,oracle_cursor,mysql_cursor):  # 手�
             out_view = oracle_cursor.fetchall()
             source_view_total = len(out_view)  # Oracle所有视图数量
         except Exception as e:
-            print(e, '获取源数据库视图失败')
+            print(e, 'fetch source view name failed')
         try:
             mysql_cursor.execute(
                 """select count(*) from information_schema.TABLES where TABLE_SCHEMA='%s' and TABLE_TYPE='VIEW'""" % target_db_name)  # mysql视图总数
             target_view_total = mysql_cursor.fetchone()[0]
         except Exception as e:
-            print(e, '获取目标视图总数失败')
-        print('视图总数:' + '源数据库 ' + str(source_view_total) + ' 目标数据库 ' + str(target_view_total))
+            print(e, 'get target view total count failed')
+        print('view totals:' + 'source_db ' + str(source_view_total) + ' target_db ' + str(target_view_total))
         for v_out_view in out_view:
             source_view_name = v_out_view[0]
             table_id += 1
@@ -165,7 +164,7 @@ def data_compare_single(sourcedb, target_db,oracle_cursor,mysql_cursor):  # 手�
                 else:
                     target_view_name = source_view_name
             except Exception as e:
-                print(e, ' 在目标数据库查询视图失败', target_view_name)
+                print(e, ' get target view name failed ', target_view_name)
             if source_view_name.upper() != str(target_view_name).upper():
                 is_success = 'N'
             else:
@@ -187,7 +186,7 @@ def data_compare_single(sourcedb, target_db,oracle_cursor,mysql_cursor):  # 手�
                     0, is_success.upper()))
                 mysql_cursor.execute('commit')
             except Exception as e:
-                print(e, '数据比对结果保存在目标表失败')
+                print(e, 'save compare result failed')
                 mysql_cursor.execute('rollback')
 
 
@@ -238,7 +237,7 @@ def main():
     sys.stdout = Logger(log_path + "compare.log", sys.stdout)
     table_prepare(mysql_cursor)
     data_compare_single(oracle_user, mysql_database,oracle_cursor,mysql_cursor)
-    print('表结果比较如下:')
+    print('compare result below:')
     mysql_cursor.execute("""select * from DATA_COMPARE""")
     data_compare_out = mysql_cursor.fetchall()
     tb = pt.PrettyTable()
@@ -255,7 +254,7 @@ def main():
     for v_data_compare_out in data_compare_out:
         tb.add_row(list(v_data_compare_out))
     print(tb)
-    print('数据比较已结束，请查看目标' + mysql_database.upper() + '.' + 'DATA_COMPARE获取详细信息')
+    print('compare finish please select * from ' + mysql_database.upper() + '.' + 'DATA_COMPARE')
     mysql_cursor.close()
     oracle_conn.close()
 
