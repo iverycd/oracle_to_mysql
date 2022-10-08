@@ -9,13 +9,14 @@ import readConfig
 import configDB
 
 """
-v1.9.28.2
-修复非utf8终端输出异常问题
+v1.10.8.1
+修复Linux环境变量LANG不是UTF8导致的异常
 """
 
 
 class Logger(object):
-    def __init__(self, filename='com.log', add_flag=True, stream=open(sys.stdout.fileno(), mode='w', encoding='utf8', buffering=1)):
+    def __init__(self, filename='com.log', add_flag=True,
+                 stream=open(sys.stdout.fileno(), mode='w', encoding='utf8', buffering=1)):
         self.terminal = stream
         self.filename = filename
         self.add_flag = add_flag
@@ -24,12 +25,18 @@ class Logger(object):
     def write(self, message):
         if self.add_flag:
             with open(self.filename, 'a+', encoding='utf-8') as log:
-                self.terminal.write(message)
-                log.write(message)
+                try:
+                    self.terminal.write(message)
+                    log.write(message)
+                except Exception as e:
+                    print(e)
         else:
             with open(self.filename, 'w', encoding='utf-8') as log:
-                self.terminal.write(message)
-                log.write(message)
+                try:
+                    self.terminal.write(message)
+                    log.write(message)
+                except Exception as e:
+                    print(e)
 
     def flush(self):
         pass
@@ -50,7 +57,7 @@ compare_time TIMESTAMP default CURRENT_TIMESTAMP
 )""")
 
 
-def check_db_exist(source_name, target_name,oracle_cursor,mysql_cursor):
+def check_db_exist(source_name, target_name, oracle_cursor, mysql_cursor):
     src_result = 0
     trg_result = 0
     try:
@@ -64,14 +71,14 @@ def check_db_exist(source_name, target_name,oracle_cursor,mysql_cursor):
     return src_result, trg_result
 
 
-def data_compare_single(sourcedb, target_db,oracle_cursor,mysql_cursor):  # 手动输入源数据库、目标数据库名称，比对全表数据
+def data_compare_single(sourcedb, target_db, oracle_cursor, mysql_cursor):  # 手动输入源数据库、目标数据库名称，比对全表数据
     table_id = 0
     source_rows = 0
     target_rows = 0
     target_db_name = ''
     target_table_name = ''
     target_view_name = ''
-    src_out, trg_out = check_db_exist(sourcedb, target_db,oracle_cursor,mysql_cursor)
+    src_out, trg_out = check_db_exist(sourcedb, target_db, oracle_cursor, mysql_cursor)
     if src_out == 0:
         print(sourcedb, 'source db not exist\nEXIT!')
         sys.exit()
@@ -191,6 +198,9 @@ def data_compare_single(sourcedb, target_db,oracle_cursor,mysql_cursor):  # 手�
 
 
 def main():
+    if sys.stdin.encoding.upper() != 'UTF-8':
+        print('Warning -> Your os environment LANG is not set UTF8,Please type on "export LANG=en_US.UTF-8" in your terminal and try again')
+        sys.exit(0)
     # 创建日志文件夹
     log_path = ''
     theTime = datetime.datetime.now()
@@ -234,9 +244,9 @@ def main():
     oracle_conn = cx_Oracle.connect(
         oracle_user + '/' + oracle_passwd + '@' + oracle_host + ':' + oracle_port + '/' + oracle_service_name)
     oracle_cursor = oracle_conn.cursor()
-    sys.stdout = Logger(log_path + "compare.log", sys.stdout)
+    sys.stdout = Logger(log_path + "compare.log", True, sys.stdout)
     table_prepare(mysql_cursor)
-    data_compare_single(oracle_user, mysql_database,oracle_cursor,mysql_cursor)
+    data_compare_single(oracle_user, mysql_database, oracle_cursor, mysql_cursor)
     print('compare result below:')
     mysql_cursor.execute("""select * from DATA_COMPARE""")
     data_compare_out = mysql_cursor.fetchall()
@@ -255,6 +265,17 @@ def main():
         tb.add_row(list(v_data_compare_out))
     print(tb)
     print('compare finish please select * from ' + mysql_database.upper() + '.' + 'DATA_COMPARE')
+    print('below maybe failed table:')
+    mysql_cursor.execute(
+        """SELECT id,source_table_name,source_rows,db_type,target_table_name,target_rows,is_success FROM data_compare WHERE  is_success='N'
+         order by target_rows,target_table_name""")
+    data_compare_out = mysql_cursor.fetchall()
+    tb = pt.PrettyTable()
+    tb.field_names = ['id', 'source_table_name', 'source_rows', 'type', 'target_table_name',
+                      'target_rows', 'is_success']
+    for v_data_compare_out in data_compare_out:
+        tb.add_row(list(v_data_compare_out))
+    print(tb)
     mysql_cursor.close()
     oracle_conn.close()
 
