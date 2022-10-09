@@ -40,47 +40,46 @@
 
 :camera:平台测试
 
-客户端硬件平台：
+硬件平台：
 
-| CPU | 内存 | 硬盘 | 备注 |
+| CPU | 内存 | 硬盘 | 数据库信息 |
 | :---------------: | :----------------: | :-----------------: | :-----------------: |
-| Intel(R) Core(TM) i7-12700 2.10 GHz(12核20线程)| 芝奇皇家戟 DDR4 3600 32G    | 西数SN850        | 迁移工具版本v1.9.28.4
+| Intel i7-12700 2.10 GHz(12核20线程)| 芝奇皇家戟 DDR4 3600 32G    | 西数SN850        | Oracle 19c,MySQL 5.7.24
+
+SN850磁盘iops性能:
+
+| 随机读 | 108816.88 |
+|--------|-----------|
+| 随机写 | 94763.05  |
+| 顺序读 | 111201.16 |
+| 顺序写 | 22127.80  |
+| 块大小 | 8K        |
 
 
-服务端硬件平台
+![image](https://user-images.githubusercontent.com/35289289/194733907-2e1d44ef-85f8-4a3a-a491-a9107086e813.png)
 
-| CPU | 内存 | 硬盘 | 备注 |
-| :---------------: | :----------------: | :-----------------: |:-----------------: |
-| Intel(R) Xeon(R) E5-2670 v2 2.50GHz(8核16线程)| 三星DDR4 32G      |   INTEL P3700   | Oracle 11.2.0.4 MySQL 5.7.24
 
 源端表结构
 
 ```sql
-CREATE TABLE TABLE_2000W 
+CREATE TABLE TEST 
 (
-LOGFILE_DATA_ID NUMBER,
-NAME VARCHAR2(100)
+ID NUMBER,
+NAME VARCHAR2(100),
+SEX VARCHAR2(100)
 )
 
 ```
 
-在以上测试平台迁移Oracle一张2000万的表，迁移耗时`200秒`左右
+在以上测试平台迁移Oracle一张2000万的表，迁移耗时`68秒`
 
-![image](https://user-images.githubusercontent.com/35289289/192426252-a4631991-2ddc-4e76-951d-a43eed58d65d.png)
-
-充分利用CPU多核心，提高数据迁移效率
-
-![image](https://user-images.githubusercontent.com/35289289/192426838-53eec0cf-dc4d-4731-9217-76b777bd6af2.png)
+![截图](https://user-images.githubusercontent.com/35289289/194733428-66f311fc-7fb9-4fde-a708-0f31626a6e7c.png)
 
 ****
 
-`v1.9.21.1版本及以下`为单线程迁移数据，迁移Oracle一张2000万的表耗时`3000秒`左右
+`v1.9.21.1版本及以下`为单线程迁移数据，迁移Oracle一张2000万的表耗时`709秒`
 
-![image](https://user-images.githubusercontent.com/35289289/192427224-b5b4d5d6-1237-4d8a-b655-8079306c3e8e.png)
-
-`v1.9.21.1版本及以下`CPU利用率不高
-
-![image](https://user-images.githubusercontent.com/35289289/192427398-1903ae68-f41b-482a-a6d9-683b01591ad2.png)
+![QQ20221009-0](https://user-images.githubusercontent.com/35289289/194733433-61ec7f23-03f4-4ec9-b1a2-1362544ae618.png)
 
 
 :camera:运行概览
@@ -127,11 +126,12 @@ https://www.oracle.com/database/technologies/instant-client/linux-x86-64-downloa
 
 或者直接下载当前资源库文件[linux_oracle_client.7z](https://github.com/iverycd/oracle_to_mysql/blob/master/linux_oracle_client.7z)
 
-以上解压，并设定oracle client为正确路径的环境变量
+以上解压，并设定oracle client为正确路径的环境变量,需要注意的是需要设定`LANG`的环境变量为`en_US.UTF-8`,否则中文可能会乱码无法正常显示
 ```bash
 echo "export ORACLE_HOME=/opt/oracle_to_mysql/ora_client/instantclient_11_2"
 echo "export LD_LIBRARY_PATH=$ORACLE_HOME:$LD_LIBRARY_PATH"
 echo "export PATH=$ORACLE_HOME:$PATH"
+echo "export LANG=en_US.UTF-8"
 ```
 
 `MAC`
@@ -276,11 +276,11 @@ sh mac_pack.sh
 2、运行环境变量脚本
 
 ```bash
-[root@localhost ]# sh env_ora.sh 
+[root@localhost ]# sh env_ora.sh && source run_env
 
 ```
 
-![image](https://user-images.githubusercontent.com/35289289/191475634-d6788075-bfd6-45af-87e3-0d779b5ddd51.png)
+![image](https://user-images.githubusercontent.com/35289289/194734505-ffd7500f-86ef-4c96-bc2a-8c058c206a14.png)
 
 
 :warning:注意：此步骤仅Linux环境需要，Windows以及MacOS无需执行
@@ -321,26 +321,22 @@ row_batch_size = 10000 # 每次插入到目标表的行数
 
 后台执行命令(需要命令后面带-q)：
 
-[root@localhost ]# nohup ./oracle_mig_mysql -q &
+示例:[root@localhost ]# nohup ./oracle_mig_mysql -q &
 
 前台执行命令：（不推荐，如果源库数据量很大，建议使用后台迁移，避免putty等终端工具超时自动断开）
 
-[root@localhost ]#  ./oracle_mig_mysql
+示例:[root@localhost ]#  ./oracle_mig_mysql
 
 ```
 
 
 4、查看数据迁移运行过程
 
-如果是在后台运行“nohup ./oracle_mig_mysql -q &”
-
-，可通过如下命令查看实时迁移过程
+如果是在后台运行`nohup ./oracle_mig_mysql -q &`，可通过如下命令查看实时迁移过程
 
 ```bash
 
-
 [root@localhost ]# tail -100f nohup.out 
-
 
 ```
 
