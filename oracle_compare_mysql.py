@@ -9,8 +9,8 @@ import readConfig
 import configDB
 
 """
-v1.10.8.1
-修复Linux环境变量LANG不是UTF8导致的异常
+v1.10.9.1
+增加运行前Linux环境变量检测
 """
 
 
@@ -224,6 +224,12 @@ def main():
     elif platform.system().upper() == 'LINUX' or platform.system().upper() == 'DARWIN':
         oracle_home = os.path.dirname(os.path.realpath(sys.argv[0])) + '/oracle_client'
         os.environ['ORACLE_HOME'] = oracle_home
+        if platform.system().upper() == 'LINUX':
+            if 'oracle_client' not in os.environ['LD_LIBRARY_PATH']:
+                print('LD_LIBRARY_PATH->', os.environ['LD_LIBRARY_PATH'])
+                print('please check oracle_client is setted correct path\n')
+                print('You can run command "sh env_ora.sh && source run_env" and try it again')
+                sys.exit(0)
         log_path = "mig_log" + '/' + date_show + '/'
         if not os.path.isdir(log_path):
             os.makedirs(log_path)

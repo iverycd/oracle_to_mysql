@@ -23,6 +23,12 @@ elif platform.system().upper() == 'LINUX' or platform.system().upper() == 'DARWI
     exepath = os.path.dirname(os.path.abspath(__file__)) + '/'
     oracle_home = os.path.dirname(os.path.realpath(sys.argv[0])) + '/oracle_client'
     os.environ['ORACLE_HOME'] = oracle_home
+    if platform.system().upper() == 'LINUX':
+        if 'oracle_client' not in os.environ['LD_LIBRARY_PATH']:
+            print('LD_LIBRARY_PATH->', os.environ['LD_LIBRARY_PATH'])
+            print('Please check oracle_client is setted correct path\n')
+            print('You can run command "sh env_ora.sh && source run_env" and try it again')
+            sys.exit(0)
 else:
     print('set oracle client failed\n')
 

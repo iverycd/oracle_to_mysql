@@ -19,10 +19,10 @@ import concurrent
 from concurrent.futures import ThreadPoolExecutor
 
 """
-v1.10.8.1
-修复Linux环境变量LANG不是UTF8导致的异常
+v1.10.9.1
+增加运行前Linux环境变量检测
 """
-version = 'v1.10.8.1'
+version = 'v1.10.9.1'
 
 config = readConfig.ReadConfig()
 
