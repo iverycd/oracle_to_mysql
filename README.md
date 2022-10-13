@@ -86,7 +86,8 @@ SEX VARCHAR2(100)
 
 `全库迁移`
 
-![image](https://user-images.githubusercontent.com/35289289/190549811-62bce516-c8e4-4ca1-a751-2c718ec6f460.png)
+![qqqqqqq](https://user-images.githubusercontent.com/35289289/195539136-2ded9b4e-79bb-434f-b447-fa6e5fd05e22.png)
+
 
 
 `比对数据`
@@ -366,9 +367,10 @@ row_batch_size = 10000 # 每次插入到目标表的行数
 
 终端内执行即可：
 
-![image](https://user-images.githubusercontent.com/35289289/191476818-e02419d7-b2c6-4522-b103-3dcfe49f209d.png)
+![iShot2022-10-13_14 33 27](https://user-images.githubusercontent.com/35289289/195539327-8ee00224-eefc-4206-98ac-505a1e4278db.png)
 
-![image](https://user-images.githubusercontent.com/35289289/191477136-2d523962-2e2a-46d9-ab3f-93e2bb0bff86.png)
+![iShot2022-10-13_14 35 51](https://user-images.githubusercontent.com/35289289/195539344-8e1bdabc-86db-456d-8f40-7466cfa9eb4a.png)
+
 
 
 #### Windows环境
@@ -568,23 +570,23 @@ START MIGRATING ROW DATA! 2021-12-23 18:17:03.715882
 :one:仅迁移自定义表的表结构以及数据包括索引等约束
 
 ```python
-python oracle_mig_mysql.py -c
+ ./oracle_mig_mysql -c
 ```
 
 :two:仅迁移自定义表的表数据，不包括表结构以及索引等约束
 
 ```python
-python oracle_mig_mysql.py -d
+ ./oracle_mig_mysql -d
 ```
 
 :three:仅迁移自定义表的元数据，即表结构（表定义、视图、索引、触发器自增列等约束），不迁移数据
 
 ```python
-python oracle_mig_mysql.py -m
+ ./oracle_mig_mysql -m
 ```
 
 :four:静默模式,输入-q之后无需在命令行界面键入“y”进行迁移前确认，默认为一键:bangbang:全库迁移:bangbang:
 
 ```python
-python oracle_mig_mysql.py -q 
+ ./oracle_mig_mysql -q 
 ```
