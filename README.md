@@ -511,14 +511,13 @@ G:\oracle_mig_mysql>oracle_mig_mysql.exe -d
 
 ```bash
 
-+---------------------------------------------------+
-| Oracle Migrate MySQL Tool                         |
-+---------------------------------------------------+
-| Powered By: Epoint Infrastructure Research Center |
-| Release Date:  2021-12-13                         |
-| Support Database: MySQL 5.7 and Oracle 11g higher |
-| Tool Version: 1.8.18                              |
-+---------------------------------------------------+
++-----------------------------------------+
+| Oracle Migrate MySQL Tool               |
++-----------------------------------------+
+| MySQL 5.7 and Oracle 11g higher Support |
+| Powered By IVERYCD                      |
+| Version v1.10.12.1                      |
++-----------------------------------------+
 
 Source Database information:
 +----------+-------------+-----------------------------------------------------------+
