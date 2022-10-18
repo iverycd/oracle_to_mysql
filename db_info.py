@@ -10,6 +10,7 @@ import configDB
 import prettytable
 import sql_format
 import platform
+from HTMLTable import (HTMLTable)
 
 if platform.system().upper() == 'WINDOWS':
     exepath = os.path.dirname(os.path.realpath(sys.argv[0])) + '\\'
@@ -446,9 +447,9 @@ class DbMetadata(object):
         k = prettytable.PrettyTable(field_names=["Oracle Migrate MySQL Tool"])
         k.align["Oracle Migrate MySQL Tool"] = "l"
         k.padding_width = 1  # 填充宽度
-        k.add_row(["Support Database MySQL 5.7 and Oracle 11g higher"])
+        k.add_row(["MySQL 5.7 and Oracle 11g higher Support"])
         k.add_row(["Version " + version])
-        k.add_row(["Powered By Epoint Infrastructure Research Center"])
+        k.add_row(["Powered By IVERYCD"])
         print(k.get_string(sortby="Oracle Migrate MySQL Tool", reversesort=False))
         print('\nSource Database information:')
         # print source connect info
@@ -485,20 +486,23 @@ class DbMetadata(object):
             k.padding_width = 1  # 填充宽度
             k.add_row(["Migration Mode:full database"])
             print(k.get_string(sortby="migrate mode", reversesort=False))
-            source_table_count = self.oracle_cursor.fetch_one("""select count(*) from user_tables""")[0]
-            source_view_count = self.oracle_cursor.fetch_one("""select count(*) from user_views""")[0]
-            source_trigger_count = \
-                self.oracle_cursor.fetch_one(
+            try:
+                source_table_count = self.oracle_cursor.fetch_one("""select count(*) from user_tables""")[0]
+                source_view_count = self.oracle_cursor.fetch_one("""select count(*) from user_views""")[0]
+                source_trigger_count = self.oracle_cursor.fetch_one(
                     """select count(*) from user_triggers where TRIGGER_NAME not like 'BIN$%'""")[0]
-            source_procedure_count = self.oracle_cursor.fetch_one(
-                """select count(*) from USER_PROCEDURES where OBJECT_TYPE='PROCEDURE' and OBJECT_NAME  not like 'BIN$%'""")[
-                0]
-            source_function_count = self.oracle_cursor.fetch_one(
-                """select count(*) from USER_PROCEDURES where OBJECT_TYPE='FUNCTION' and OBJECT_NAME  not like 'BIN$%'""")[
-                0]
-            source_package_count = self.oracle_cursor.fetch_one(
-                """select count(*) from USER_PROCEDURES where OBJECT_TYPE='PACKAGE' and OBJECT_NAME  not like 'BIN$%'""")[
-                0]
+                source_procedure_count = self.oracle_cursor.fetch_one(
+                    """select count(*) from USER_PROCEDURES where OBJECT_TYPE='PROCEDURE' and OBJECT_NAME  not like 'BIN$%'""")[
+                    0]
+                source_function_count = self.oracle_cursor.fetch_one(
+                    """select count(*) from USER_PROCEDURES where OBJECT_TYPE='FUNCTION' and OBJECT_NAME  not like 'BIN$%'""")[
+                    0]
+                source_package_count = self.oracle_cursor.fetch_one(
+                    """select count(*) from USER_PROCEDURES where OBJECT_TYPE='PACKAGE' and OBJECT_NAME  not like 'BIN$%'""")[
+                    0]
+            except Exception as e:
+                print(e)
+                source_table_count, source_view_count, source_trigger_count, source_procedure_count, source_function_count, source_package_count = 0, 0, 0, 0, 0, 0
             # print sourcedatabase info
             print('Source Database Information:')
             x = prettytable.PrettyTable(
@@ -532,10 +536,12 @@ class DbMetadata(object):
         else:
             sys.exit()
         # 创建迁移任务表，用来统计表插入以及完成的时间
-        self.mysql_cursor.execute("""drop table if exists my_mig_task_info""")
-        self.mysql_cursor.execute("""create table my_mig_task_info(table_name varchar(500),task_start_time datetime(3) default current_timestamp(3),
-            task_end_time datetime(3) default current_timestamp(3),thread int,run_time decimal(30,6),source_table_rows int,target_table_rows int,
-            is_success varchar(100),run_status varchar(10))""")
+        try:
+            self.mysql_cursor.execute("""drop table if exists my_mig_task_info""")
+            self.mysql_cursor.execute(
+                """create table my_mig_task_info(table_name varchar(500),task_start_time datetime(3) default current_timestamp(3),  task_end_time datetime(3) default current_timestamp(3),thread int,run_time decimal(30,6),source_table_rows bigint default 0,target_table_rows bigint default 0, is_success varchar(100) default '',run_status varchar(10) default '',type varchar(100),detail varchar(100) default '')""")
+        except Exception as e:
+            print(e)
 
     def run_info(self, exepath, log_path, mig_start_time, mig_end_time, all_table_count, list_success_table,
                  ddl_failed_table_result,
@@ -606,13 +612,103 @@ class DbMetadata(object):
         print('5 CONSTRAINT INDEX TOTAL: ' + str(
             oracle_constraint_count) + ' TARGET SUCCESS INDEX: ' + mysql_success_constraint + ' TARGET FAILED INDEX: ' + str(
             index_failed_count))
-        print('6 FOREIGN KET TOTAL: ' + str(
+        print('6 FOREIGN KEY TOTAL: ' + str(
             oracle_fk_count) + ' TARGET SUCCESS FK: ' + mysql_success_fk + ' TARGET FAILED FK: ' +
               str(fk_failed_count))
         print('\nPLEASE CHECK FAILED TABLE DDL IN LOG DIR')
         print('Oracle PROCEDURE SAVED TO ' + exepath + '' + log_path + 'ddl_function_procedure.sql\n')
         print(
             'MIGATE LOG HAVE SAVED TO ' + exepath + '' + log_path + '\nPLEASE SELECT * FROM my_mig_task_info IN TARGET DATABASE\nINSERT FAILED TABLE PLEASE CHECK ddl_failed_table.log AND insert_failed_table.log\n\n')
+        print('\n\n GENERATE REPORT ON CURRENT DIRECTORY "run_report.html"')
+        table = HTMLTable(caption='RUN INFORMATION' + '------>DETAIL RUN LOG IN 👉' + exepath + '' + log_path + '👈')
+        table.append_header_rows((('ID', 'OBJECT', 'TOTAL', 'SUCCESS', 'FAILED'),))
+        # table[0][0].attr.colspan = 2
+        table.append_data_rows((
+            ('1', 'TABLE', str(oracle_tab_count), str(mysql_success_table_count), str(table_failed_count)),
+            ('2', 'VIEW', str(oracle_view_count), str(mysql_success_view_count), str(view_error_count)),
+            ('3', 'AUTO INCREMENT COL', str(oracle_autocol_total), str(mysql_success_incol_count), str(autocol_error_count)),
+            ('4', 'TRIGGER', str(normal_trigger_count), str(trigger_success_count), str(trigger_failed_count)),
+            ('5', 'CONSTRAINT INDEX', str(oracle_constraint_count), str(mysql_success_constraint), str(index_failed_count)),
+            ('6', 'FOREIGN KEY', str(oracle_fk_count), str(mysql_success_fk), str(fk_failed_count)),
+        ))
+        table.caption.set_style({
+            'font-size': '20px',
+        })
+        table.set_style({
+            'border-collapse': 'collapse',
+            'word-break': 'keep-all',
+            'white-space': 'nowrap',
+            'font-size': '14px',
+        })
+        table.set_cell_style({
+            'border-color': '#000',
+            'border-width': '1px',
+            'border-style': 'solid',
+            'padding': '5px',
+        })
+        table.set_header_row_style({
+            'color': '#fff',
+            'background-color': '#48a6fb',
+            'font-size': '18px',
+        })
+
+        # 覆盖表头单元格字体样式
+        table.set_header_cell_style({
+            'padding': '15px',
+        })
+        table[1].set_cell_style({
+            'padding': '8px',
+            'font-size': '15px',
+        })
+        html = table.to_html()
+        f = open("run_report.html", "w", encoding="utf-8")
+        f.write(html)
+        sql2 = "select convert(id,char) id,table_name,convert(source_table_rows,char) source_table_rows,convert(target_table_rows,char) target_table_rows,run_datail from (select (@i:= @i+1) as id,a.* from (select cc.table_name,cc.source_table_rows,cc.target_table_rows,case when cc.detail = '' then 'SUCCESS' else cc.detail end  run_datail from (select bb.table_name,bb.source_table_rows,bb.target_table_rows,concat(run_info,detail) detail from (select aa.table_name,aa.source_table_rows,aa.target_table_rows,case when aa.source_table_rows !=aa.target_table_rows then 'TABLE INSERT FAIL' else '' end run_info,aa.detail from (select table_name,max(source_table_rows) source_table_rows,sum(target_table_rows) target_table_rows,detail from my_mig_task_info where type='TABLE' group by table_name ) aa) bb) cc order by run_datail) a,(select @i:=0) b) ee"
+        self.mysql_cursor.execute(sql2)
+        sql_out = self.mysql_cursor.fetchall()
+        table2 = HTMLTable(caption='TABLE REPORT')
+        table2.append_header_rows((
+            ('ID', 'TABLE_NAME', 'SOURCE_COUNT', 'TARGET_COUNT', 'RUN_DETAIL'),
+        ))
+        table2.append_data_rows(sql_out)
+        table2.caption.set_style({
+            'font-size': '20px',
+        })
+        table2.set_style({
+            'border-collapse': 'collapse',
+            'word-break': 'keep-all',
+            'white-space': 'nowrap',
+            'font-size': '14px',
+        })
+        table2.set_cell_style({
+            'border-color': '#000',
+            'border-width': '1px',
+            'border-style': 'solid',
+            'padding': '5px',
+        })
+        table2.set_header_row_style({
+            'color': '#fff',
+            'background-color': '#48a6fb',
+            'font-size': '18px',
+        })
+
+        # 覆盖表头单元格字体样式
+        table2.set_header_cell_style({
+            'padding': '15px',
+        })
+        table2[1].set_cell_style({
+            'padding': '8px',
+            'font-size': '15px',
+        })
+        # 遍历数据行，如果增长量为负，标红背景颜色
+        for row in table2.iter_data_rows():
+            if row[4].value != 'SUCCESS':
+                row.set_style({
+                    'background-color': '#ffdddd',
+                })
+        html = table2.to_html()
+        f = open("run_report.html", "a", encoding="utf-8")
+        f.write(html)
 
     def cte_tab(self, log_path, is_custom_table):
         # db_meta = DbMetadata()
@@ -764,6 +860,13 @@ class DbMetadata(object):
             endtime) + '\n' + "Elapsed:" + str(
             (endtime - starttime).seconds) + " seconds\n")
         print('#' * 50 + 'TABLE CREATE FINISH' + '#' * 50 + '\n\n\n')
+        if len(ddl_failed_table_result) > 0:
+            for fail_table_name in ddl_failed_table_result:
+                try:
+                    self.mysql_cursor.execute("insert into  my_mig_task_info(table_name,detail,type) values('%s','%s','%s')" % (
+                    fail_table_name, 'TABLE NOT EXIST','TABLE'))
+                except Exception as e:
+                    print(e, 'insert table my_mig_task_info failed')
         return all_table_count, list_success_table, ddl_failed_table_result
 
     def cte_idx(self, log_path, is_custom_table):
@@ -955,7 +1058,11 @@ class DbMetadata(object):
                     fk_table.append(list(line.strip('\n').upper().split(',')))
         else:  # 创建全部外键
             table_foreign_key = 'select table_name from USER_CONSTRAINTS where CONSTRAINT_TYPE= \'R\''
-            fk_table = self.oracle_cursor.fetch_all(table_foreign_key)
+            try:
+                fk_table = self.oracle_cursor.fetch_all(table_foreign_key)
+            except Exception as e:
+                print(e)
+                fk_table = []
         if len(fk_table) > 0:
             print('START CREATE FOREIGN KEY')
             for v_result_table in fk_table:  # 获得一张表创建外键的拼接语句，按照每张表顺序来创建外键
@@ -1031,9 +1138,12 @@ class DbMetadata(object):
         user_name = self.oracle_cursor.fetch_one("""select user from dual""")
         user_name = user_name[0]
         # Oracle中无法对long类型数据截取，创建用于存储触发器字段信息的临时表TRIGGER_NAME
-        count_num_tri = \
-            self.oracle_cursor.fetch_one("""select count(*) from user_tables where table_name='TRIGGER_NAME'""")[
-                0]
+        try:
+            count_num_tri = \
+                self.oracle_cursor.fetch_one("""select count(*) from user_tables where table_name='TRIGGER_NAME'""")[0]
+        except Exception as e:
+            count_num_tri = 0
+            print(e)
         if count_num_tri == 1:  # 判断表trigger_name是否存在
             try:
                 self.oracle_cursor.execute_sql("""truncate table trigger_name""")
@@ -1094,11 +1204,12 @@ class DbMetadata(object):
             except Exception:
                 print(traceback.format_exc())
                 print('update trigger_name ERROR')
-        all_create_index = self.oracle_cursor.fetch_all(
-            """select distinct sql_create
-    from
-    (
-    select to_char('create index ids_'||substr(table_name,1,26)||' on '||table_name||'('||upper(substr(substr(SUBSTR(trigger_body, INSTR(upper(trigger_body), ':NEW.') + 1,length(trigger_body) - instr(trigger_body, ':NEW.')), 1, instr(upper(SUBSTR(trigger_body, INSTR(upper(trigger_body), ':NEW.') + 1,length(trigger_body) - instr(trigger_body, ':NEW.'))), ' FROM DUAL;') - 1), 5)) ||');') as sql_create from trigger_name where trigger_type='BEFORE EACH ROW' and instr(upper(trigger_body), 'NEXTVAL')>0 AND TRIGGER_BODY LIKE '%INTO :%' )""")  # 在Oracle拼接sql生成用于在MySQL中自增列的索引
+        try:
+            all_create_index = self.oracle_cursor.fetch_all(
+                """select distinct sql_create from (select to_char('create index ids_'||substr(table_name,1,26)||' on '||table_name||'('||upper(substr(substr(SUBSTR(trigger_body, INSTR(upper(trigger_body), ':NEW.') + 1,length(trigger_body) - instr(trigger_body, ':NEW.')), 1, instr(upper(SUBSTR(trigger_body, INSTR(upper(trigger_body), ':NEW.') + 1,length(trigger_body) - instr(trigger_body, ':NEW.'))), ' FROM DUAL;') - 1), 5)) ||');') as sql_create from trigger_name where trigger_type='BEFORE EACH ROW' and instr(upper(trigger_body), 'NEXTVAL')>0 AND TRIGGER_BODY LIKE '%INTO :%' )""")  # 在Oracle拼接sql生成用于在MySQL中自增列的索引
+        except Exception as e:
+            all_create_index = []
+            print(e)
         auto_inc_count = len(all_create_index)
         if auto_inc_count > 0:
             print('CREATE INDEX FOR AUTO COL:\n ')
@@ -1145,24 +1256,12 @@ class DbMetadata(object):
 
             print('\nSTART MODIFY AUTO COL ATTRIBUTE:')
             print(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
-            all_alter_sql = self.oracle_cursor.fetch_all("""SELECT to_char(
-      'alter table ' || table_name || ' modify ' || upper(
-        substr(
-          substr(
-            SUBSTR(
-              trigger_body,
-              INSTR( upper( trigger_body ), ':NEW.' ) + 1,
-            length( trigger_body ) - instr( trigger_body, ':NEW.' )),
-            1,
-            instr( upper( SUBSTR( trigger_body, INSTR( upper( trigger_body ), ':NEW.' ) + 1, length( trigger_body ) - instr( trigger_body, ':NEW.' ))), ' FROM DUAL;' ) - 1 
-        ),
-        5 
-      )) || ' bigint auto_increment;' )
-    FROM
-      trigger_name 
-    WHERE
-      trigger_type = 'BEFORE EACH ROW' AND TRIGGER_BODY LIKE '%INTO :%' 
-      AND instr( upper( trigger_body ), 'NEXTVAL' )> 0""")
+            try:
+                all_alter_sql = self.oracle_cursor.fetch_all(
+                    """SELECT to_char('alter table ' || table_name || ' modify ' || upper( substr( substr( SUBSTR( trigger_body, INSTR( upper( trigger_body ), ':NEW.' ) + 1, length( trigger_body ) - instr( trigger_body, ':NEW.' )),1, instr( upper( SUBSTR( trigger_body, INSTR( upper( trigger_body ), ':NEW.' ) + 1, length( trigger_body ) - instr( trigger_body, ':NEW.' ))), ' FROM DUAL;' ) - 1  ),  5  )) || ' bigint auto_increment;' ) FROM trigger_name  WHERE trigger_type = 'BEFORE EACH ROW' AND TRIGGER_BODY LIKE '%INTO :%'  AND instr( upper( trigger_body ), 'NEXTVAL' )> 0""")
+            except Exception as e:
+                print(e)
+                all_alter_sql = []
             auto_num = 0
             for v_increa_col in all_alter_sql:
                 auto_num += 1
@@ -1202,9 +1301,13 @@ class DbMetadata(object):
             end_time = datetime.datetime.now()
             print('ALTER AUTO COL ELAPSED TIME: ' + str((end_time - start_time).seconds))
             print('#' * 50 + 'FINISH AUTO COL' + '#' * 50 + '\n\n\n')
-            oracle_autocol_total = self.oracle_cursor.fetch_one(
-                """select count(*) from trigger_name  where trigger_type='BEFORE EACH ROW' and instr(upper(trigger_body), 'NEXTVAL')>0""")[
-                0]  # 将自增列的总数存入list
+            try:
+                oracle_autocol_total = self.oracle_cursor.fetch_one(
+                    """select count(*) from trigger_name  where trigger_type='BEFORE EACH ROW' and instr(upper(trigger_body), 'NEXTVAL')>0""")[
+                    0]  # 将自增列的总数存入list
+            except Exception as e:
+                print(e)
+                oracle_autocol_total = 0
         else:
             print('NO AUTO COL')
         print('#' * 50 + 'END AUTO COL' + '#' * 50 + '\n')
@@ -1273,17 +1376,22 @@ class DbMetadata(object):
                 for line in f:
                     output_table_name.append(list(line.strip('\n').upper().split(',')))  # 读取txt中的自定义表到list
             for v_custom_table in output_table_name:  # 根据第N个表查询生成拼接sql
-                custom_comment = self.oracle_cursor.fetch_all("""
-                            select 'alter table '||TABLE_NAME||' comment '||''''||COMMENTS||'''' as create_comment
-                         from USER_TAB_COMMENTS where COMMENTS is not null and table_name = '%s' 
-                         """ % v_custom_table[0])
+                try:
+                    custom_comment = self.oracle_cursor.fetch_all(
+                        """select 'alter table '||TABLE_NAME||' comment '||''''||COMMENTS||'''' as create_comment from USER_TAB_COMMENTS where COMMENTS is not null and table_name = '%s'  """ %
+                        v_custom_table[0])
+                except Exception as e:
+                    print(e)
+                    custom_comment = []
                 for v_out in custom_comment:  # 每次将上面单表全部结果集全部存到all_comment_sql的list里面
                     all_comment_sql.append(v_out)
         else:  # 创建全部注释
-            all_comment_sql = self.oracle_cursor.fetch_all("""
-                select 'alter table '||TABLE_NAME||' comment '||''''||COMMENTS||'''' as create_comment
-             from USER_TAB_COMMENTS where COMMENTS is not null
-                """)
+            try:
+                all_comment_sql = self.oracle_cursor.fetch_all(
+                    """select 'alter table '||TABLE_NAME||' comment '||''''||COMMENTS||'''' as create_comment  from USER_TAB_COMMENTS where COMMENTS is not null """)
+            except Exception as e:
+                print(e)
+                all_comment_sql = []
         if len(all_comment_sql) > 0:
             for e in all_comment_sql:  # 一次性创建注释
                 # table_name = e[0]
@@ -1314,8 +1422,12 @@ class DbMetadata(object):
 
     def cp_vw(self):
         # 重新编译Oracle视图
-        all_view_compile = self.oracle_cursor.fetch_all(
-            """select 'alter view '||view_name||' compile' from user_views""")
+        try:
+            all_view_compile = self.oracle_cursor.fetch_all(
+                """select 'alter view '||view_name||' compile' from user_views""")
+        except Exception as e:
+            print(e)
+            all_view_compile = []
         for exe_compile in all_view_compile:
             exe_compile_sql = exe_compile[0]
             print(exe_compile_sql)
@@ -1337,22 +1449,34 @@ class DbMetadata(object):
             print('#' * 50 + 'START CREATE VIEW' + '#' * 50)
             print(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
             # Oracle中无法对long类型数据截取，创建用于存储视图信息的临时表content_view
-            count_num_view = \
-                self.oracle_cursor.fetch_one("""select count(*) from user_tables where table_name='CONTENT_VIEW'""")[0]
+            try:
+                count_num_view = \
+                    self.oracle_cursor.fetch_one(
+                        """select count(*) from user_tables where table_name='CONTENT_VIEW'""")[0]
+            except Exception as e:
+                print(e)
+                count_num_view = 0
             if count_num_view == 1:
-                self.oracle_cursor.execute_sql("""drop table CONTENT_VIEW purge""")
-                self.oracle_cursor.execute_sql("""create table content_view (view_name varchar2(200),text clob)""")
-                self.oracle_cursor.execute_sql(
-                    """insert into content_view(view_name,text) select view_name,to_lob(text) from USER_VIEWS where 
-            view_name in (select object_name from user_objects where object_type='VIEW' and status='VALID')""")
+                try:
+                    self.oracle_cursor.execute_sql("""drop table CONTENT_VIEW purge""")
+                    self.oracle_cursor.execute_sql("""create table content_view (view_name varchar2(200),text clob)""")
+                    self.oracle_cursor.execute_sql(
+                        """insert into content_view(view_name,text) select view_name,to_lob(text) from USER_VIEWS where  view_name in (select object_name from user_objects where object_type='VIEW' and status='VALID')""")
+                except Exception as e:
+                    print(e)
             else:
-                self.oracle_cursor.execute_sql("""create table content_view (view_name varchar2(200),text clob)""")
-                self.oracle_cursor.execute_sql(
-                    """insert into content_view(view_name,text) select view_name,to_lob(text) from USER_VIEWS where 
-            view_name in (select object_name from user_objects where object_type='VIEW' and status='VALID')""")
-            all_view_create = self.oracle_cursor.fetch_all("""
-                select  view_name,'create view '||view_name||' as '||replace(text, '"'  , '') as view_sql from CONTENT_VIEW
-                """)
+                try:
+                    self.oracle_cursor.execute_sql("""create table content_view (view_name varchar2(200),text clob)""")
+                    self.oracle_cursor.execute_sql(
+                        """insert into content_view(view_name,text) select view_name,to_lob(text) from USER_VIEWS where  view_name in (select object_name from user_objects where object_type='VIEW' and status='VALID')""")
+                except Exception as e:
+                    print(e)
+            try:
+                all_view_create = self.oracle_cursor.fetch_all(
+                    """select  view_name,'create view '||view_name||' as '||replace(text, '"'  , '') as view_sql from CONTENT_VIEW """)
+            except Exception as e:
+                print(e)
+                all_view_create = []
             all_view_count = len(all_view_create)
             if all_view_count > 0:
                 view_count = 0

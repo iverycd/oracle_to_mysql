@@ -19,10 +19,10 @@ import concurrent
 from concurrent.futures import ThreadPoolExecutor
 
 """
-v1.10.9.1
-增加运行前Linux环境变量检测
+v1.10.17.1
+增加html报告,修正html写入内容指定编码为utf8，SQL拼接完善
 """
-version = 'v1.10.9.1'
+version = 'v1.10.17.1'
 
 config = readConfig.ReadConfig()
 
@@ -128,6 +128,13 @@ def insert_child2_thread(sql_list, start_index, insert_sql, table_name, get_tabl
         while True:
             rows = list(ora_cur.fetchmany(insert_size))
             if not rows:
+                try:
+                    run_info_sql = "insert into my_mig_task_info(table_name,source_table_rows,target_table_rows,type) values('%s','%s','%s','%s')" % (
+                    table_name, 0, 0, 'TABLE')
+                    my_cur.execute(run_info_sql)
+                    my_conn.commit()
+                except Exception as e:
+                    print(e, 'insert into my_mig_task_info failed')
                 break
             try:
                 my_cur.executemany(insert_sql, rows)  # 批量插入获取的结果集，需要注意的是 rows 必须是 list [] 数据类型
@@ -148,6 +155,12 @@ def insert_child2_thread(sql_list, start_index, insert_sql, table_name, get_tabl
                 f.write(str(rows[0]) + '\n\n')
                 f.write(sql_insert_error + '\n\n')
                 f.close()
+            try:
+                run_info_sql = "insert into my_mig_task_info(table_name,source_table_rows,target_table_rows,type) values('%s','%s','%s','%s')" % (table_name ,get_table_count, my_cur.rowcount,'TABLE')
+                my_cur.execute(run_info_sql)
+                my_conn.commit()
+            except Exception as e:
+                print(e, 'insert into my_mig_task_info failed')
 
 
 def split_child1_mp(task_id, table_list, log_path):  # 用于生成每个表分页查询拼接SQL
@@ -212,13 +225,13 @@ def split_child1_mp(task_id, table_list, log_path):  # 用于生成每个表分�
             val_str = val_str + '%s' + ','
         val_str = val_str + '%s'  # MySQL批量插入语法是 insert into tb_name values(%s,%s,%s,%s)
         insert_sql = 'insert  into ' + target_table + ' values(' + val_str + ')'
-        try:
-            mysql_cursor_total.execute(
-                """insert into my_mig_task_info(table_name,thread,run_status) values('%s','%s','%s')""" % (
-                    table_name, task_id, 'running'))
-            mysql_con_total.commit()
-        except Exception as e:
-            print(e)
+        # try:
+        #     mysql_cursor_total.execute(
+        #         """insert into my_mig_task_info(table_name,thread,run_status) values('%s','%s','%s')""" % (
+        #             table_name, task_id, 'running'))
+        #     mysql_con_total.commit()
+        # except Exception as e:
+        #     print(e)
         page_size = split_page_size  # 分页的每页记录数
         total_page_num = round((get_table_count + page_size - 1) / page_size)  # 自动计算总共有几页
         for page_index in range(total_page_num):  # 例如总共有100行记录，每页10条记录，那么需要循环10次
@@ -240,7 +253,7 @@ def split_child1_mp(task_id, table_list, log_path):  # 用于生成每个表分�
         split_sql = list_of_groups(list_all_sql, compute_thread)
         # 每个线程处理对应的SQL分页的分片查询结果
         # v_index是对应分页查询列表的分片线程号，比如线程号1处理表A的分页查询0到10行记录，线程号2处理11-20行记录，线程号3处理剩余的
-        with concurrent.futures.ThreadPoolExecutor(max_workers=16) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=64) as executor:
             task = {
                 executor.submit(insert_child2_thread, split_sql, v_index, insert_sql, table_name,
                                 get_table_count,
@@ -303,8 +316,8 @@ class DataTransfer(object):
             # 创建迁移任务表，用来统计表插入以及完成的时间
             mysql_cur.execute("""drop table if exists my_mig_task_info""")
             mysql_cur.execute("""create table my_mig_task_info(table_name varchar(100),task_start_time datetime,
-                    task_end_time datetime ,thread int,run_time decimal(30,6),source_table_rows int,target_table_rows int,
-                    is_success varchar(100))""")
+                    task_end_time datetime ,thread int,run_time decimal(30,6),source_table_rows bigint default 0,target_table_rows bigint default 0,
+                    is_success varchar(100) default '',type varchar(100),detail varchar(100) default '')""")
         except Exception as e:
             print(e)
         with open(log_path + "table.txt", "r") as f:  # 读取自定义表

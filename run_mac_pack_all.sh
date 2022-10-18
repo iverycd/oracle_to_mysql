@@ -5,6 +5,11 @@ ssh -p 8222 root@192.168.149.33 "cd /opt/python_code/oracle_to_mysql && ls && sh
 scp -P 8222 root@192.168.149.33:/opt/python_code/oracle_to_mysql/oracle_mig_mysql_linux_x86.zip /Users/kay/Documents/release
 # pack MacOS release zip file
 cd /Users/kay/Documents/python_code/oracle_to_mysql
+rm -rf package/*.py
+cp db_info.py package
+cp configDB.py package
+cp readConfig.py package
+cp sql_format.py package
 /Users/kay/opt/anaconda3/bin/pyinstaller -F --clean -p package oracle_mig_mysql.py
 /Users/kay/opt/anaconda3/bin/pyinstaller -F --clean -p package oracle_compare_mysql.py
 rm -rf dist/oracle_to_mysql
@@ -37,5 +42,5 @@ fi
 
 # print test info
 echo "you can test release MacOS 10.13.6 on ssh kay@192.168.149.129 cd /Users/kay/Documents/oracle_to_mysql"
-echo "you can test release CentOS 7.9 on ssh root@192.168.189.210 cd /opt/oracle_to_mysql"
+echo "you can test release CentOS 7.9 on ssh root@192.168.189.200 cd /opt/oracle_to_mysql"
 echo "you can test release Windows 10 on ssh administrator@192.168.125.128 cd C:\\\test\\oracle_mig_mysql"
