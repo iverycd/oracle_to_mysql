@@ -12,7 +12,9 @@
 
 :sparkles:支持Linux,Windows,MacOS，Oracle 11.2.0.4及以上，MySQL 5.7,8.0及以上测试通过
 
-:sparkles: 支持在线迁移Oracle到MySQL的表、视图、索引、触发器、外键、自增列、以及部分触发器，不支持存储过程以及函数的迁移
+:sparkles: 支持在线迁移Oracle到MySQL的表、视图、索引、触发器、外键、自增列、以及部分触发器
+
+:sparkles: 不支持Oracle存储过程、函数、分区表、物化视图、虚拟列等对象迁移到MySQL
 
 :sparkles: 自动分析源库Oracle字段的长度并适配到MySQL合适的长度，避免MySQL字段长度太长问题 “Row size too large 65535”
 
@@ -26,9 +28,22 @@
 
 :sparkles: 支持迁移Oracle与MySQL共同存在的列数据，即目标数据库的列字段是源数据库列字段的超集
 
-:sparkles: 记录迁移日志，转储表、视图等DDL对象创建失败的sql语句
+:sparkles: 生成迁移报告，记录迁移日志，转储表、视图等DDL对象创建失败的sql语句
 
 :sparkles: 支持Oracle与MySQL表数量快速比对功能
+
+## :surfer: 迁移指南
+
+Oracle迁移到MySQL主要涉及数据结构迁移、数据迁移、业务迁移这三类，一般来说按照如下步骤操作即可：
+
+1. 使用本迁移工具迁移表结构以及数据行（参见本文`发布包`章节）
+
+2. 比对Oracle、MySQL全表数据行数
+
+3. 手动处理工具无法完成的数据库对象，比如说MySQL不支持的字段类型、表长度过长、关键字、默认值、虚拟列等对象
+
+4. 业务迁移中由于MySQL不支持并行、不支持物化视图，会涉及到存储过程以及函数改造，同义词改造，DBlink、sequence、分区表以及视图复杂sql语句的改造
+
 
 
 :star:环境要求
@@ -88,6 +103,10 @@ SEX VARCHAR2(100)
 
 ![qqqqqqq](https://user-images.githubusercontent.com/35289289/195539136-2ded9b4e-79bb-434f-b447-fa6e5fd05e22.png)
 
+
+`迁移报告`
+
+![image](https://user-images.githubusercontent.com/35289289/196347839-09bd1eb5-def8-4466-aac7-2bc3df6eeed4.png)
 
 
 `比对数据`
@@ -238,7 +257,7 @@ sh mac_pack.sh
 
 修改脚本为正确路径后，运行bat脚本 `pack.bat`
 
-## :gift:开箱即用的二进制可执行文件
+## :gift:发布包(解压之后，无需安装，开箱即用)
 
 下载[release](https://github.com/iverycd/oracle_to_mysql/releases/)
 
