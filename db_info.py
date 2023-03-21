@@ -41,6 +41,10 @@ class DbMetadata(object):
             self.mysql_cursor = configDB.MySQLPOOL.connection().cursor()  # MySQL连接池
             self.oracle_info = self.oracle_cursor._OraclePool__pool._kwargs
             self.mysql_info = self.mysql_cursor._con._kwargs
+            if str(self.mysql_cursor._con._con.server_version)[:1] == '8':
+                self.mysql_cursor._con._setsession_sql = ['SET AUTOCOMMIT=0;', 'SET foreign_key_checks=0;',
+                                                          'set session sql_require_primary_key=OFF']
+
         except Exception as e:
             print('connect database failed please check oracle client is correct or network is ok\n', e)
 
@@ -484,7 +488,10 @@ class DbMetadata(object):
             k = prettytable.PrettyTable(field_names=["migrate mode"])
             k.align["migrate mode"] = "l"
             k.padding_width = 1  # 填充宽度
-            k.add_row(["Migration Mode:full database"])
+            if run_method == 2:
+                k.add_row(["Migration Mode:create metadata only"])
+            else:
+                k.add_row(["Migration Mode:full database"])
             print(k.get_string(sortby="migrate mode", reversesort=False))
             try:
                 source_table_count = self.oracle_cursor.fetch_one("""select count(*) from user_tables""")[0]
@@ -539,7 +546,7 @@ class DbMetadata(object):
         try:
             self.mysql_cursor.execute("""drop table if exists my_mig_task_info""")
             self.mysql_cursor.execute(
-                """create table my_mig_task_info(table_name varchar(500),task_start_time datetime(3) default current_timestamp(3),  task_end_time datetime(3) default current_timestamp(3),thread int,run_time decimal(30,6),source_table_rows bigint default 0,target_table_rows bigint default 0, is_success varchar(100) default '',run_status varchar(10) default '',type varchar(100),detail varchar(100) default '')""")
+                """create table my_mig_task_info(table_name varchar(500),task_start_time datetime(3) default current_timestamp(3),  task_end_time datetime(3) default current_timestamp(3),thread int,run_time decimal(30,6),source_table_rows bigint default 0,target_table_rows bigint default 0, is_success varchar(100) default '',run_status varchar(10) default '',type varchar(100) default 'TABLE',detail varchar(100) default '')""")
         except Exception as e:
             print(e)
 

@@ -19,10 +19,11 @@ import concurrent
 from concurrent.futures import ThreadPoolExecutor
 
 """
-v1.10.17.1
-增加html报告,修正html写入内容指定编码为utf8，SQL拼接完善
+v1.3.21
+增加会话属性set session sql_require_primary_key=OFF在MySQL8版本可创建无主键的表
+输出信息优化
 """
-version = 'v1.10.17.1'
+version = 'v1.3.21'
 
 config = readConfig.ReadConfig()
 
@@ -273,6 +274,9 @@ class DataTransfer(object):
         self.row_batch_size = int(config.get_mysql('row_batch_size'))
         try:
             self.mysql_cursor = configDB.MySQLPOOL.connection().cursor()
+            if str(self.mysql_cursor._con._con.server_version)[:1] == '8':
+                self.mysql_cursor._con._setsession_sql = ['SET AUTOCOMMIT=0;', 'SET foreign_key_checks=0;',
+                                                          'set session sql_require_primary_key=OFF']
             self.ora_con = cx_Oracle.connect(self.ora_info)
             self.cur_oracle_result = self.ora_con.cursor()
             self.cur_oracle_result.outputtypehandler = dataconvert
@@ -317,7 +321,7 @@ class DataTransfer(object):
             mysql_cur.execute("""drop table if exists my_mig_task_info""")
             mysql_cur.execute("""create table my_mig_task_info(table_name varchar(100),task_start_time datetime,
                     task_end_time datetime ,thread int,run_time decimal(30,6),source_table_rows bigint default 0,target_table_rows bigint default 0,
-                    is_success varchar(100) default '',type varchar(100),detail varchar(100) default '')""")
+                    is_success varchar(100) default '',type varchar(100) default 'TABLE',detail varchar(100) default '')""")
         except Exception as e:
             print(e)
         with open(log_path + "table.txt", "r") as f:  # 读取自定义表
@@ -609,6 +613,8 @@ def main():
                 if text.split():
                     fd.write(text)
     sys.stdout = Logger(log_path + "mig.log", True, sys.stdout)
+    if str(args.metadata_only).upper() == 'TRUE':
+        run_method = 2
     db_meta_data.get_info(run_method, mode, log_path, version)
     # 创建目标表结构
     if str(args.data_only).upper() != 'TRUE':

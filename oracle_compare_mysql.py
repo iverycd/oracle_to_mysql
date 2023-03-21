@@ -9,8 +9,8 @@ import readConfig
 import configDB
 
 """
-v1.10.9.1
-增加运行前Linux环境变量检测
+v1.3.21
+增加会话属性set session sql_require_primary_key=OFF在MySQL8版本可创建无主键的表
 """
 
 
@@ -238,6 +238,9 @@ def main():
     config = readConfig.ReadConfig()  # 实例化
     mysql_conn = configDB.MySQLPOOL.connection()
     mysql_cursor = mysql_conn.cursor()  # MySQL连接池
+    if str(mysql_cursor._con._con.server_version)[:1] == '8':
+        mysql_cursor._con._setsession_sql = ['SET AUTOCOMMIT=0;', 'SET foreign_key_checks=0;',
+                                                  'set session sql_require_primary_key=OFF']
     mysql_database = config.get_mysql('database')
     mysql_dbchar = config.get_mysql('dbchar')
     # Oracle read config
