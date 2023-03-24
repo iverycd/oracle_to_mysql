@@ -1,8 +1,8 @@
 #!/bin/bash
 # pack linux release zip file
-ssh -p 8222 root@192.168.149.33 "cd /opt/python_code/oracle_to_mysql && ls && sh run_pack_remote.sh"
+ssh -p 22 root@192.168.189.208 "cd /opt/pycode/oracle_to_mysql && ls && sh pack.sh"
 # cp linux release to MacOS 192.168.149.79
-scp -P 8222 root@192.168.149.33:/opt/python_code/oracle_to_mysql/oracle_mig_mysql_linux_x86.zip /Users/kay/Documents/release
+scp -P 22 root@192.168.189.208:/opt/pycode/oracle_to_mysql/oracle_mig_mysql_linux_x86.zip /Users/kay/Documents/release
 # pack MacOS release zip file
 cd /Users/kay/Documents/python_code/oracle_to_mysql
 rm -rf package/*.py

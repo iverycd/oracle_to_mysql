@@ -180,7 +180,7 @@ class DbMetadata(object):
                     result.append({'fieldname': column[0],  # 如下为字段的属性值
                                    'type': 'DATETIME',  # 列字段类型以及长度范围
                                    'primary': column[0],  # 如果有主键字段返回true，否则false
-                                   'default': 'null',  # 字段默认值
+                                   'default': '',  # 字段默认值
                                    'isnull': column[5],  # 字段是否允许为空，true为允许，否则为false
                                    'comment': column[6]
                                    }
@@ -419,7 +419,7 @@ class DbMetadata(object):
                 result.append({'fieldname': column[0],  # 如下为字段的属性值
                                'type': 'LONGTEXT',  # 列字段类型以及长度范围
                                'primary': column[0],  # 如果有主键字段返回true，否则false
-                               'default': 'null',  # 字段默认值
+                               'default': '',  # 字段默认值
                                'isnull': column[5],  # 字段是否允许为空，true为允许，否则为false
                                'comment': column[6]
                                }
@@ -429,7 +429,7 @@ class DbMetadata(object):
                 result.append({'fieldname': column[0],  # 如下为字段的属性值
                                'type': 'LONGBLOB',  # 列字段类型以及长度范围
                                'primary': column[0],  # 如果有主键字段返回true，否则false
-                               'default': 'null',  # 字段默认值
+                               'default': '',  # 字段默认值
                                'isnull': column[5],  # 字段是否允许为空，true为允许，否则为false
                                'comment': column[6]
                                }
@@ -633,9 +633,11 @@ class DbMetadata(object):
         table.append_data_rows((
             ('1', 'TABLE', str(oracle_tab_count), str(mysql_success_table_count), str(table_failed_count)),
             ('2', 'VIEW', str(oracle_view_count), str(mysql_success_view_count), str(view_error_count)),
-            ('3', 'AUTO INCREMENT COL', str(oracle_autocol_total), str(mysql_success_incol_count), str(autocol_error_count)),
+            ('3', 'AUTO INCREMENT COL', str(oracle_autocol_total), str(mysql_success_incol_count),
+             str(autocol_error_count)),
             ('4', 'TRIGGER', str(normal_trigger_count), str(trigger_success_count), str(trigger_failed_count)),
-            ('5', 'CONSTRAINT INDEX', str(oracle_constraint_count), str(mysql_success_constraint), str(index_failed_count)),
+            ('5', 'CONSTRAINT INDEX', str(oracle_constraint_count), str(mysql_success_constraint),
+             str(index_failed_count)),
             ('6', 'FOREIGN KEY', str(oracle_fk_count), str(mysql_success_fk), str(fk_failed_count)),
         ))
         table.caption.set_style({
@@ -769,8 +771,8 @@ class DbMetadata(object):
                                                  struct['type'],
                                                  # 'primary key' if struct.get('primary') else '',主键在创建表的时候定义
                                                  # ('default ' + '\'' + defaultvalue + '\'') if defaultvalue else '',
-                                                 ('default ' + defaultvalue) if defaultvalue else '',
-                                                 '' if struct.get('isnull') else 'not null',
+                                                 ('default ' + defaultvalue) if defaultvalue else '',  # 如果有默认值才加上default关键字
+                                                 '' if struct.get('isnull') == 'True' else 'not null',
                                                  (
                                                          'comment ' + '"' + commentvalue + '"') if commentvalue else ''
                                                  ),
@@ -814,7 +816,7 @@ class DbMetadata(object):
                             '{0} {1} {2} {3} {4}'.format('`' + struct['fieldname'] + '`',  # 2021-10-18增加了"`"MySQL的关键字
                                                          struct['type'],
                                                          ('default ' + defaultvalue) if defaultvalue else '',
-                                                         '' if struct.get('isnull') else 'not null',
+                                                         '' if struct.get('isnull') == 'True' else 'not null',
                                                          (
                                                                  'comment ' + '"' + commentvalue + '"') if commentvalue else ''
                                                          ),
@@ -870,8 +872,9 @@ class DbMetadata(object):
         if len(ddl_failed_table_result) > 0:
             for fail_table_name in ddl_failed_table_result:
                 try:
-                    self.mysql_cursor.execute("insert into  my_mig_task_info(table_name,detail,type) values('%s','%s','%s')" % (
-                    fail_table_name, 'TABLE NOT EXIST','TABLE'))
+                    self.mysql_cursor.execute(
+                        "insert into  my_mig_task_info(table_name,detail,type) values('%s','%s','%s')" % (
+                            fail_table_name, 'TABLE NOT EXIST', 'TABLE'))
                 except Exception as e:
                     print(e, 'insert table my_mig_task_info failed')
         return all_table_count, list_success_table, ddl_failed_table_result

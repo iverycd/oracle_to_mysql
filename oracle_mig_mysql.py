@@ -19,11 +19,10 @@ import concurrent
 from concurrent.futures import ThreadPoolExecutor
 
 """
-v1.3.21
-增加会话属性set session sql_require_primary_key=OFF在MySQL8版本可创建无主键的表
-输出信息优化
+v1.3.24
+修复非空约束
 """
-version = 'v1.3.21'
+version = 'v1.3.24'
 
 config = readConfig.ReadConfig()
 
