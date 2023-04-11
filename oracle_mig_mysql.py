@@ -19,10 +19,10 @@ import concurrent
 from concurrent.futures import ThreadPoolExecutor
 
 """
-v1.3.24
-修复非空约束
+v1.23.4.10
+modify process and thread 
 """
-version = 'v1.3.24'
+version = 'v1.23.4.10'
 
 config = readConfig.ReadConfig()
 
@@ -80,8 +80,8 @@ def split_success_list(v_max_workers, list_success_table):
     将创建表成功的list结果分为n个小list，无论指定多少进程，现在最大限制到4进程
     """
     new_list = []  # 用于存储1分为2的表，将原表分成2个list
-    if v_max_workers > 4:  # 最大使用4进程分割list
-        v_max_workers = 4
+    if v_max_workers > 32:  # 最大使用4进程分割list
+        v_max_workers = 32
     if len(list_success_table) <= 1:
         v_max_workers = 1
     split_size = round(len(list_success_table) / v_max_workers)
@@ -105,7 +105,7 @@ def list_of_groups(init_list, childern_list_len):
 
 def insert_child2_thread(sql_list, start_index, insert_sql, table_name, get_table_count, log_path,
                          insert_size):
-    mysql_host = configDB.mysql_host
+    mysql_host = configDB.mysql_host  # 单个任务里查询源库，插入到目标数据库
     mysql_port = configDB.mysql_port
     mysql_user = configDB.mysql_user
     mysql_passwd = configDB.mysql_passwd
@@ -163,7 +163,7 @@ def insert_child2_thread(sql_list, start_index, insert_sql, table_name, get_tabl
                 print(e, 'insert into my_mig_task_info failed')
 
 
-def split_child1_mp(task_id, table_list, log_path):  # 用于生成每个表分页查询拼接SQL
+def split_child1_mp(task_id, table_list, log_path):  # 在单个进程，处理表集合里面每个表，生成能同时运行的分页查询拼接SQL
     mysql_host = configDB.mysql_host
     mysql_port = configDB.mysql_port
     mysql_user = configDB.mysql_user
@@ -178,6 +178,7 @@ def split_child1_mp(task_id, table_list, log_path):  # 用于生成每个表分�
     mysql_con_total = pymysql.connect(host=mysql_host, user=mysql_user, password=mysql_passwd, database=mysql_database,
                                       charset=mysql_dbchar, port=mysql_port)
     mysql_cursor_total = mysql_con_total.cursor()
+    print('current table task id:',task_id)
     for v_table_name in table_list:  # 获取每个进程表名的结果集
         table_name = v_table_name
         target_table = source_table = table_name
@@ -253,7 +254,7 @@ def split_child1_mp(task_id, table_list, log_path):  # 用于生成每个表分�
         split_sql = list_of_groups(list_all_sql, compute_thread)
         # 每个线程处理对应的SQL分页的分片查询结果
         # v_index是对应分页查询列表的分片线程号，比如线程号1处理表A的分页查询0到10行记录，线程号2处理11-20行记录，线程号3处理剩余的
-        with concurrent.futures.ThreadPoolExecutor(max_workers=64) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=256) as executor:
             task = {
                 executor.submit(insert_child2_thread, split_sql, v_index, insert_sql, table_name,
                                 get_table_count,
@@ -261,9 +262,9 @@ def split_child1_mp(task_id, table_list, log_path):  # 用于生成每个表分�
             for future in concurrent.futures.as_completed(task):
                 task_name = task[future]
                 try:
-                    data = future.done()
+                    future.result()
                 except Exception as e:
-                    print(e)
+                    print('split_child1_mp %r generated an exception: %s' % (task_name, e))
 
 
 class DataTransfer(object):
@@ -282,11 +283,12 @@ class DataTransfer(object):
         except Exception as e:
             print(e)
 
-    def parent_process(self, new_list, log_path):  # 这里是主进程,多进程时调用子进程mig_table并行迁移数据
+    def parent_process(self, new_list, log_path):  # 这里是主进程,多进程调用split_child1_mp分页查询任务,每个进程同时对每个表list集合进行分页切片
         process_list = []
         print('START MIGRATING ROW DATA! ' + str(datetime.datetime.now()) + ' \n')
-        begin_time = datetime.datetime.now()
-        for p_id in range(len(new_list[0])):  # new_list被分割的小list个数
+        begin_time = datetime.datetime.now()  # new_list被分割的小list表集合
+        for p_id in range(len(new_list[0])):  # 以下是同时运行N个进程，每个进程处理一部分表集合，计算每个表分页查询
+            print('table wait for insert process list ->','len[',len(new_list[0][p_id]),']',new_list[0][p_id])
             process = multiprocessing.Process(target=split_child1_mp,
                                               args=(
                                                   p_id, new_list[0][p_id],
@@ -570,7 +572,8 @@ def main():
         if not os.path.isdir(log_path):
             os.makedirs(log_path)
     elif platform.system().upper() == 'LINUX' or platform.system().upper() == 'DARWIN':
-        exepath = os.path.dirname(os.path.abspath(__file__)) + '/'
+        # exepath = os.path.dirname(os.path.abspath(__file__)) + '/'
+        exepath = os.path.dirname(os.path.realpath(sys.argv[0])) + '/'
         oracle_home = os.path.dirname(os.path.realpath(sys.argv[0])) + '/oracle_client'
         os.environ['ORACLE_HOME'] = oracle_home
         log_path = "mig_log" + '/' + date_show + '/'

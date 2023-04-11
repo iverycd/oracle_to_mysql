@@ -11,6 +11,7 @@ import prettytable
 import sql_format
 import platform
 from HTMLTable import (HTMLTable)
+import ctypes
 
 if platform.system().upper() == 'WINDOWS':
     exepath = os.path.dirname(os.path.realpath(sys.argv[0])) + '\\'
@@ -453,7 +454,7 @@ class DbMetadata(object):
         k.padding_width = 1  # 填充宽度
         k.add_row(["MySQL 5.7 and Oracle 11g higher Support"])
         k.add_row(["Version " + version])
-        k.add_row(["Powered By IVERYCD"])
+        k.add_row(["Powered By DBA Group of Infrastructure Research Center"])
         print(k.get_string(sortby="Oracle Migrate MySQL Tool", reversesort=False))
         print('\nSource Database information:')
         # print source connect info
@@ -540,6 +541,9 @@ class DbMetadata(object):
             is_continue = input('\nREADY FOR MIGRATING DATABASE ?:(PLEASE INPUT "Y" OR "N" TO CONTINUE)\n')
         if is_continue == 'Y' or is_continue == 'y':
             print('GO')  # continue
+            if platform.system().upper() == 'WINDOWS':
+                kernel32 = ctypes.windll.kernel32
+                kernel32.SetConsoleMode(kernel32.GetStdHandle(-10), 128)
         else:
             sys.exit()
         # 创建迁移任务表，用来统计表插入以及完成的时间

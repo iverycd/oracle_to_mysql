@@ -7,6 +7,7 @@ import cx_Oracle
 import prettytable as pt
 import readConfig
 import configDB
+import ctypes
 
 """
 v1.3.21
@@ -99,6 +100,7 @@ def data_compare_single(sourcedb, target_db, oracle_cursor, mysql_cursor):  # �
         for v_out_table in out_table:
             source_table = v_out_table[0]
             table_id += 1
+            print('正在比对表[' + source_table + '] ' + str(table_id) + '/' + str(source_table_total))
             try:
                 oracle_cursor.execute("""select count(*) from %s.\"%s\"""" % (sourcedb, source_table))
                 source_rows = oracle_cursor.fetchone()[0]  # 源表行数
@@ -198,6 +200,9 @@ def data_compare_single(sourcedb, target_db, oracle_cursor, mysql_cursor):  # �
 
 
 def main():
+    if platform.system().upper() == 'WINDOWS':
+        kernel32 = ctypes.windll.kernel32
+        kernel32.SetConsoleMode(kernel32.GetStdHandle(-10), 128)
     if sys.stdin.encoding.upper() != 'UTF-8':
         print('Warning -> Your os environment LANG is not set UTF8,Please type on "export LANG=en_US.UTF-8" in your terminal and try again')
         sys.exit(0)
