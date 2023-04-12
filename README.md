@@ -335,24 +335,28 @@ row_batch_size = 10000 # 每次插入到目标表的行数
 
 4、执行全库迁移
 
-`须知：如果是通过堡垒机或者是vpn连接的非图形化界面，强烈建议使用后台方式运行此工具，避免数据迁移中断`
+`须知：如果是通过堡垒机或者是vpn连接的非图形化界面，建议使用后台方式运行此工具，避免数据迁移中断`
 
 ```bash
 
 后台执行命令(需要命令后面带-q)：
 
-示例:[root@localhost ]# nohup ./oracle_mig_mysql -q &
-
-前台执行命令：（不推荐，如果源库数据量很大，建议使用后台迁移，避免putty等终端工具超时自动断开）
-
-示例:[root@localhost ]#  ./oracle_mig_mysql
+示例:静默迁移同时使用4个进程并发迁移全表数据
+[root@localhost ]# nohup ./oracle_mig_mysql -q -p 4 &
 
 ```
 
 
+```bash
+前台执行命令：（如果源库数据量很大，建议使用后台迁移，避免putty等终端工具超时自动断开）
+
+示例:同时使用4个进程并发迁移全表数据
+[root@localhost ]#  ./oracle_mig_mysql -p 4
+```
+
 4、查看数据迁移运行过程
 
-如果是在后台运行`nohup ./oracle_mig_mysql -q &`，可通过如下命令查看实时迁移过程
+如果是在后台运行`nohup ./oracle_mig_mysql -q -p 4 &`，可通过如下命令查看实时迁移过程
 
 ```bash
 
@@ -437,9 +441,10 @@ G:\>cd G:\oracle_mig_mysql
 
 3、执行全库迁移
 
+`同时使用4个进程并发迁移全表数据`
 
 ```bash
-G:\oracle_mig_mysql>oracle_mig_mysql.exe
+G:\oracle_mig_mysql>oracle_mig_mysql.exe -p 4
 ```
 
 4、迁移完成后查看迁移任务日志
@@ -603,8 +608,10 @@ START MIGRATING ROW DATA! 2021-12-23 18:17:03.715882
  ./oracle_mig_mysql -m
 ```
 
-:four:静默模式,输入-q之后无需在命令行界面键入“y”进行迁移前确认，默认为一键:bangbang:全库迁移:bangbang:
+`注意以上-c -d -m不能同时使用，只能使用其中之一`
+
+:four:静默模式并同时使用4个进程并发迁移全表数据，命令后面跟-q之后无需在命令行界面键入“y”进行迁移前确认，即一键:bangbang:全库迁移:bangbang:
 
 ```python
- ./oracle_mig_mysql -q 
+ ./oracle_mig_mysql -q -p 4
 ```
