@@ -1,6 +1,6 @@
-由于Python在多线程下迁移效率不高，本人新项目使用Golang重新编写了Oracle迁移MySQL的工具，经过测试Golang在多线程下迁移数据库效率比Python提高很多，此项目以后不再更新，请移步新项目
-https://github.com/iverycd/OracleSync2MySQL
-
+# 由于Python在多线程下迁移效率不高，本人在新项目使用Golang重新编写了Oracle迁移MySQL的工具，经过测试Golang在多线程下迁移数据库效率比Python提高很多
+# 此项目不再更新,维护，请移步本人新项目https://github.com/iverycd/OracleSync2MySQL
+-----------------------------
 # oracle_to_mysql
 
 ![commit](https://img.shields.io/github/last-commit/iverycd/oracle_to_mysql?style=flat-square)
